@@ -1,0 +1,71 @@
+---
+title: "P1_RasterIntroduction"
+author: "João Gonçalves"
+date: "17 November 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.path = "img/")
+```
+
+Geospatial data is becoming increasingly used to solve numerous 'real-life' problems such as:
+( ... examples here ...). In turn, R is becoming more equipped than ever to handle this type of data 
+thus providing an exceptional open-source solution to solve many problems in the Geographic Information 
+Sciences and Remote Sensing domains. 
+
+In general two types of geospatial data models are used to represent, visualize and model spatial 
+phenomena, these are: 
+
+- __Vector data__: which represents the world in three simple geometries: __points__, __lines__ 
+and __polygons__. As such, it allows to represent spatial phenomena or variables that are typically 
+discrete and with  well-defined boundaries (e.g., touristic points-of-interest, gas stations, 
+rivers, roads, drainage basins, country GDP).
+
+- __Raster data__: provides support for representing spatial phenomena by diving the surface 
+into a grid (or matrix) composed by cells of regular size. Each raster dataset has a certain 
+number of columns and rows and each cell contains a value with information for the variable of 
+interest. Stored data can be either: (i) thematic - representing _discrete_ a variable (e.g., 
+land us/cover) or _continuous_ (e.g., elevation).
+
+Choosing the appropriate data model to use depends on the domain of application and the specific 
+problem at hand. Typically, people from the social sciences tend to use more the vector data model. 
+R packages such as __sp__ or __sf__ (a relatively new package, starting in 2016), provide support for 
+this type of data. In contrast, in the environmental sciences the raster data model is more often 
+used because of satellite data or the need to represent spatially continuous phenomena such as 
+pollution levels, temperature or precipitation values, the abundance or habitat suitability for 
+a species among many other. The __raster__ package, introduced in March 2010 by Robert Hijmans 
+& Jacob van Etten, currently provides many useful functions for using this type of data. Despite 
+these differences, GIS specialists and researchers often use both data models to tackle their 
+problems.
+
+Throughout these posts we will cover the basics, the "not-so-basics"" and some advanced stuff in 
+__raster data__ handling, manipulation and modelling in R. Examples will be given as well as exercises 
+with these different levels will be presented so you can practice.
+
+
+
+```{r Chunk1, message=FALSE, warning=FALSE, include=FALSE}
+
+if(!("raster" %in% installed.packages()[,1])) install.packages(raster)
+
+library(raster)
+
+hist(rnorm(1000))
+
+
+```
+
+<center>![image-1](http://r-exercises.com/wp-content/uploads/2016/11/)</center>
+
+
+
+
+
+
+
+
+
+
+
