@@ -26,8 +26,8 @@ rivers, roads, drainage basins, country GDP).
 - __Raster data__: provides support for representing spatial phenomena by diving the surface 
 into a grid (or matrix) composed by cells of regular size. Each raster dataset has a certain 
 number of columns and rows and each cell contains a value with information for the variable of 
-interest. Stored data can be either: (i) thematic - representing _discrete_ a variable (e.g., 
-land us/cover) or _continuous_ (e.g., elevation).
+interest. Stored data can be either: (i) thematic - representing a _discrete_ variable (e.g., 
+land use/cover) or _continuous_ (e.g., elevation).
 
 Choosing the appropriate data model to use depends on the domain of application and the specific 
 problem at hand. Typically, people from the social sciences tend to use more the vector data model. 
@@ -40,13 +40,14 @@ a species among many other. The __raster__ package, introduced in March 2010 by 
 these differences, GIS specialists and researchers often use both data models to tackle their 
 problems.
 
-Throughout these posts we will cover the basics, the "not-so-basics"" and some advanced stuff in 
-__raster data__ handling, manipulation and modelling in R. Examples will be given as well as exercises 
-with these different levels will be presented so you can practice.
+Throughout these posts we will cover the basics, intermediate and some advanced stuff in __raster data__ 
+handling, manipulation and modelling in R. Examples will be given as well as exercises with these different 
+levels will be presented so you can practice.
 
 
 
-```{r Chunk1, message=FALSE, warning=FALSE, include=FALSE}
+```{r install_packages, message=FALSE, warning=FALSE}
+
 
 if(!("raster" %in% installed.packages()[,1])) install.packages(raster)
 
