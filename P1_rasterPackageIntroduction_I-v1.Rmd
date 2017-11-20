@@ -62,7 +62,8 @@ hist(rnorm(1000))
 
 
 
-
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.tif",
+              "srtm.tif", method="auto")
 
 
 
