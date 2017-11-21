@@ -12,7 +12,7 @@ output:
 
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(fig.path = "img/")
-
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4.2, dpi = 80)
 ```
 
 ## Background
@@ -215,9 +215,17 @@ summarizing and accessing/querying values at specific locations.
 
 To visualize the data we can simply use the function `plot`.
 
-```{r P1_raster_plot, include=FALSE}
 
-plot(rst, main="Elevation (meters) for Peneda-Geres National Park, Portugal", 
+```{r P1_raster_plot, include = FALSE}
+
+plot(rst, main="Elevation (meters) for Peneda-Geres\n National Park, Portugal", 
+     xlab="X-coordinates", ylab="Y-coordinates")
+
+```
+
+```{r P1_raster_plot-1, eval = FALSE, echo = TRUE}
+
+plot(rst, main="Elevation (meters) for Peneda-Geres\n National Park, Portugal", 
      xlab="X-coordinates", ylab="Y-coordinates")
 
 ```
@@ -229,8 +237,20 @@ We can also use a histogram to visualize the distribution of elevation values in
 ```{r P1_raster_hist, message=FALSE, warning=FALSE, include=FALSE}
 
 # Generate histogram from a sample of pixels (by default 100K are randomly used)
-hist(rst, col="light grey", main = "Elevation (meters a.s.l.)", prob = TRUE, 
-     xlab = "Elevation (meters)")
+hist(rst, col="light grey", main = "Histogram of elevation", prob = TRUE, 
+     xlab = "Elevation (meters a.s.l.)")
+
+# Generate the density plot object and then overlap it
+ds <- density(rst, plot = FALSE)
+lines(ds, col = "red", lwd = 2)
+
+```
+
+```{r P1_raster_hist-1, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
+
+# Generate histogram from a sample of pixels (by default 100K are randomly used)
+hist(rst, col="light grey", main = "Histogram of elevation", prob = TRUE, 
+     xlab = "Elevation (meters a.s.l.)")
 
 # Generate the density plot object and then overlap it
 ds <- density(rst, plot = FALSE)
@@ -338,8 +358,18 @@ woods <- as(readOGR(dsn = "./data-raw", layer = "woods_pnpg"), "SpatialPolygons"
 Let's check out the polygon data with a simple plot:
 
 ```{r P1_plot_ROI, message=FALSE, warning=FALSE, include=FALSE}
-## 
-plot(rst, main="Elevation (meters) for Peneda-Geres National Park, Portugal", 
+## Plot elevation raster
+plot(rst, main="Elevation (meters) for Peneda-Geres\n National Park, Portugal", 
+     xlab="X-coordinates", ylab="Y-coordinates")
+
+## Add the ROI
+plot(woods, add = TRUE)
+
+```
+
+```{r P1_plot_ROI-1, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
+## Plot elevation raster
+plot(rst, main="Elevation (meters) for Peneda-Geres\n National Park, Portugal", 
      xlab="X-coordinates", ylab="Y-coordinates")
 
 ## Add the ROI
@@ -367,7 +397,14 @@ patch.
 
 ```{r P1_extract_pol_histogram, include=FALSE}
 
-hist(elev)
+hist(elev, main = "Histogram of ROI elevation", xlab = "Elevation (meters a.s.l.)")
+abline(v = mean(elev), lwd = 2) ## Mean line
+
+```
+
+```{r P1_extract_pol_histogram-1, echo=TRUE, eval=FALSE}
+
+hist(elev, main = "Histogram of ROI elevation", xlab = "Elevation (meters a.s.l.)")
 abline(v = mean(elev), lwd = 2) ## Mean line
 
 ```

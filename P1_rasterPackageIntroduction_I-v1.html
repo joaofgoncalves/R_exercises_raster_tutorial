@@ -234,11 +234,20 @@ extent(rst)</code></pre>
 <p><strong>.: Summary statistics</strong></p>
 <p>For the second and, last part, of this tutorial we are going to explore raster functions for visualizing, summarizing and accessing/querying values at specific locations.</p>
 <p>To visualize the data we can simply use the function <code>plot</code>.</p>
+<pre class="r"><code>plot(rst, main=&quot;Elevation (meters) for Peneda-Geres\n National Park, Portugal&quot;, 
+     xlab=&quot;X-coordinates&quot;, ylab=&quot;Y-coordinates&quot;)</code></pre>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P1_raster_plot-1.png" />
 
 </div>
 <p>We can also use a histogram to visualize the distribution of elevation values in the sample data.</p>
+<pre class="r"><code># Generate histogram from a sample of pixels (by default 100K are randomly used)
+hist(rst, col=&quot;light grey&quot;, main = &quot;Histogram of elevation&quot;, prob = TRUE, 
+     xlab = &quot;Elevation (meters a.s.l.)&quot;)
+
+# Generate the density plot object and then overlap it
+ds &lt;- density(rst, plot = FALSE)
+lines(ds, col = &quot;red&quot;, lwd = 2)</code></pre>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P1_raster_hist-1.png" />
 
@@ -248,10 +257,10 @@ extent(rst)</code></pre>
 <pre><code>## Warning in .local(object, ...): summary is an estimate based on a sample of 1e+05 cells (31.12% of all cells)</code></pre>
 <pre><code>##         srtm_pnpg
 ## Min.           11
-## 1st Qu.       527
-## Median        773
-## 3rd Qu.       983
-## Max.         1517
+## 1st Qu.       529
+## Median        776
+## 3rd Qu.       984
+## Max.         1520
 ## NA&#39;s            0</code></pre>
 <p>Minimum and maximum values can be calculated with the following functions (no sample employed):</p>
 <pre class="r"><code>## Min
@@ -292,8 +301,8 @@ extract(rst, xy)</code></pre>
 xy &lt;- data.frame(x = runif(20, xmin(rst), xmax(rst)), y = runif(20, ymin(rst), ymax(rst)))
 xy &lt;- SpatialPoints(xy, proj4string = crs(rst))
 extract(rst, xy)</code></pre>
-<pre><code>##  [1] 1128  685  465  194 1337  538  569 1155  362  834  506  243 1174  724
-## [15] 1165  934 1168 1075  732  947</code></pre>
+<pre><code>##  [1]  137  761 1034  828  834  837  691  342  597  272 1263  935  270 1240
+## [15]  339 1136 1245  991 1073 1153</code></pre>
 <p>Typically we are also interested in extracting raster values for specific regions-of-interest (ROI). In this example we will use a polygon (a broad-leaf forest area) to assess the distribution of elevation values within it.</p>
 <pre class="r"><code>## Download the vector data with the woodland patch ROI
 ## If you run it download problems try changing: method = &quot;wget&quot;
@@ -310,8 +319,14 @@ woods &lt;- as(readOGR(dsn = &quot;./data-raw&quot;, layer = &quot;woods_pnpg&qu
 ## with 1 features
 ## It has 6 fields</code></pre>
 <p>Let’s check out the polygon data with a simple plot:</p>
+<pre class="r"><code>## Plot elevation raster
+plot(rst, main=&quot;Elevation (meters) for Peneda-Geres\n National Park, Portugal&quot;, 
+     xlab=&quot;X-coordinates&quot;, ylab=&quot;Y-coordinates&quot;)
+
+## Add the ROI
+plot(woods, add = TRUE)</code></pre>
 <div class="figure">
-<img src="img/P1_plot_ROI-1.png" />
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P1_plot_ROI-1.png" />
 
 </div>
 <p>Now, let’s extract the raster values from the polygon ROI and calculate some statistics:</p>
@@ -322,9 +337,12 @@ fivenum(elev)</code></pre>
 <pre><code>## [1]  556  677  745  822 1086</code></pre>
 <p>When using <code>extract</code> with a <code>SpatialPolygons*</code> object, by default, we get a <code>list</code> containing a set of raster values for each individual polygon.<br />
 Now, using the extracted values we can investigate the distribution of elevation values for the target patch.</p>
-<pre class="r"><code>hist(elev)
+<pre class="r"><code>hist(elev, main = &quot;Histogram of ROI elevation&quot;, xlab = &quot;Elevation (meters a.s.l.)&quot;)
 abline(v = mean(elev), lwd = 2) ## Mean line</code></pre>
-<p><img src="img/P1_extract_pol_histogram-1.png" width="672" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P1_extract_pol_histogram-1.png" />
+
+</div>
 <p>This concludes our first exploration of the <code>raster</code> package - an awesome resource for handling geospatial data in R! Hope you find this post useful.</p>
 <p>Cheers!</p>
 </div>
