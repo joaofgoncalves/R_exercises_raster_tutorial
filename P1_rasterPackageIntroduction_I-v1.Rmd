@@ -347,7 +347,7 @@ plot(woods, add = TRUE)
 
 ```
 
-![](./img/P1_plot_ROI-1.png)
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P1_plot_ROI-1.png)
 
 Now, let's extract the raster values from the polygon ROI and calculate some statistics:
 
@@ -365,12 +365,15 @@ of raster values for each individual polygon.
 Now, using the extracted values we can investigate the distribution of elevation values for the target 
 patch.
 
-```{r P1_extract_pol_histogram}
+```{r P1_extract_pol_histogram, include=FALSE}
 
 hist(elev)
 abline(v = mean(elev), lwd = 2) ## Mean line
 
 ```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P1_extract_pol_histogram-1.png)
+
 
 This concludes our first exploration of the `raster` package - an awesome resource for handling 
 geospatial data in R! Hope you find this post useful.
