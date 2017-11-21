@@ -2,3 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
+/data-unzip/
+./data-unzip/
+data-unzip/
+/data-raw/
+./data-raw/
+data-raw/
