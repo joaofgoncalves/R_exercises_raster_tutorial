@@ -124,8 +124,8 @@ $(document).ready(function () {
 </div>
 
 
-<div id="background" class="section level2">
-<h2>Background</h2>
+<div id="background" class="section level3">
+<h3>Background</h3>
 <hr />
 <p>In the second part of this tutorial series on spatial data analysis using the <code>raster</code> package, we will explore new functionalities, namely:</p>
 <ul>
@@ -140,11 +140,11 @@ $(document).ready(function () {
 <p>We will also introduce a new type of object named <code>RasterStack</code>, which, in its essence, is a collection of <code>RasterLayer</code> objects with the same spatial extent, resolution and coordinate reference system (CRS).</p>
 <p>For more information information on raster data processing see <a href="http://r-exercises.com/tags/raster-data">here</a> and <a href="https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1">here</a>.</p>
 </div>
-<div id="rasterstack-objects-and-raster-algebra" class="section level2">
-<h2>RasterStack objects and Raster algebra</h2>
+<div id="rasterstack-objects-and-raster-algebra" class="section level3">
+<h3>RasterStack objects and Raster algebra</h3>
 <hr />
-<p>We will start this tutorial by downloading the sample data and creating a <code>RasterStack</code> composed by multiple image files. Satellite data from <a href="https://landsat.gsfc.nasa.gov/landsat-8/landsat-8-bands/">Landsat8</a> will be used for this purpose. The data contains <a href="http://glcf.umd.edu/data/gls_SR/">surface reflectance</a> information for seven spectral bands (or layers, following the terminology for <code>RasterStack</code> objects) in GeoTIFF file format.</p>
-<p>The following table summarizes some info on Landsat 8 satellite spectral bands.</p>
+<p>We will start this tutorial by downloading sample raster data and creating a <code>RasterStack</code> composed by multiple image files. One satellite image from <a href="https://landsat.gsfc.nasa.gov/landsat-8/landsat-8-bands/">Landsat 8</a> will be used for this purpose. The data contains <a href="http://glcf.umd.edu/data/gls_SR/">surface reflectance</a> information for seven spectral bands (or layers, following the terminology for <code>RasterStack</code> objects) in GeoTIFF file format.</p>
+<p>The following table summarizes info on Landsat 8 spectral bands.</p>
 <table>
 <thead>
 <tr class="header">
@@ -233,6 +233,91 @@ print(rst)</code></pre>
 <pre class="r"><code>inMemory(rst)</code></pre>
 <pre><code>## [1] FALSE</code></pre>
 <p>Similarly <code>RasterLayer</code> objects, by default (and unless necessary), a <code>RasterStack</code> object only holds metadata and connections to the actual data to spare memory.</p>
+<p>Plot the data for a fast visualization.</p>
+<p><a href="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master" class="uri">https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master</a></p>
+<div class="figure">
+<img src="img/plot_data-1.png" />
+
+</div>
+<p>Notice how each layer has a separated tile in the plot.</p>
+<p>Now we can proceed to doing some raster algebra calculations. We will accomplish this by using three different methods: (i) direct, (ii) <code>calc</code> function, and, (iii) <code>overlay</code> function. In this example we will calculate the Normalized Difference Vegetation Index (NDVI) using the red (b4) and the near-infrared (NIR; b5) bands as: NDVI = (NIR - Red) / (NIR + red)</p>
+<p><strong>.: Method #1</strong> (direct)</p>
+<p>This method allows to directly use the raster layers in the stack called by their indices (or names). Typical operands (e.g., <code>+</code>, <code>-</code>, <code>/</code>, <code>*</code>) can be used, as well, as functions (e.g., <code>sqrt</code>, <code>log</code>, <code>cos</code>). However, since processing occurs all at once in memory, you must be sure that your data fits into RAM.</p>
+<pre class="r"><code># Calling raster layers by index
+ndvi &lt;- (rst[[5]] - rst[[4]]) / (rst[[5]] + rst[[4]])
+
+# Or calling by name
+ndvi &lt;- (rst[[&quot;b5&quot;]] - rst[[&quot;b4&quot;]]) / (rst[[&quot;b5&quot;]] + rst[[&quot;b4&quot;]])</code></pre>
+<p>Notice how the data type of the input rasters and the final raster (a ratio) are different (from integer to float; see ?dataType for details):</p>
+<pre class="r"><code>dataType(rst)</code></pre>
+<pre><code>## [1] &quot;INT2S&quot; &quot;INT2S&quot; &quot;INT2U&quot; &quot;INT2S&quot; &quot;INT2S&quot; &quot;INT2S&quot; &quot;INT2S&quot;</code></pre>
+<pre class="r"><code>dataType(ndvi)</code></pre>
+<pre><code>## [1] &quot;FLT4S&quot;</code></pre>
+<p><strong>.: Method #2</strong> (calc function)</p>
+<p>For large objects <code>calc</code> will compute values by raster chunks thus saving memory. This means that for the result of the defined function to be correct it should not depend on having access to all values at once.</p>
+<pre class="r"><code>calcNDVI_1 &lt;- function(x) return((x[[5]] - x[[4]]) / (x[[5]] + x[[4]]))
+
+ndvi1 &lt;- calc(rst, fun = calcNDVI_1)</code></pre>
+<p><strong>.: Method #3</strong> (overlay function)</p>
+<p>The overlay function allows to combine two (or more) <code>Raster*</code> objects and it should be more efficient when using large raster datasets that cannot be loaded into memory (similarly to <code>calc</code>).</p>
+<pre class="r"><code>calcNDVI2 &lt;- function(x, y) return((x - y) / (x + y))
+
+ndvi2 &lt;- overlay(x = rst[[5]], y = rst[[4]], fun = calcNDVI2)</code></pre>
+<p>Overall, using the first method is not advisable in cases were raster data is “big”. For those cases, it is recommendable to use more “memory-friendly” methods such as <code>calc</code> or <code>overlay</code>. Also, as a general rule, if a calculation needs to use multiple individual layers separately (sometimes in different objects) it will be easier to set up in <code>overlay</code> rather than in <code>calc</code>.</p>
+<p>Plotting the NDVI data requires some fine tunning because some ‘strange’ values appeared. Note that NDVI range is between -1.00 and 1.00. In the summary below notice how ‘resistant’ measures (quartiles) are fine. Values closer to 1 mean higher vegetation cover.</p>
+<pre class="r"><code># NDVI summary
+summary(ndvi)</code></pre>
+<pre><code>##                layer
+## Min.     -18.0000000
+## 1st Qu.    0.5101894
+## Median     0.6538081
+## 3rd Qu.    0.7814815
+## Max.      40.0000000
+## NA&#39;s    2960.0000000</code></pre>
+<pre class="r"><code># Set values outside the &#39;normal&#39; range as NA&#39;s
+# Indexing for RasterLayers works similarly to matrix or data frame objects
+ndvi[ndvi &lt; -1] &lt;- NA
+ndvi[ndvi &gt; 1] &lt;- NA
+
+# Plot NDVI
+plot(ndvi)</code></pre>
+<p><img src="img/ndvi_range-1.png" width="400" /></p>
+<p><a href="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master" class="uri">https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master</a></p>
+<div class="figure">
+<img src="img/ndvi_range-1.png" />
+
+</div>
+<p>It is also fairly easy to perform logical operations. For example creating a NDVI mask with values above 0.4:</p>
+<p><a href="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master" class="uri">https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master</a></p>
+<div class="figure">
+<img src="img/raster_algebra_logical_ops-1.png" />
+
+</div>
+<p>This creates a new boolean raster with 0’s for pixels that are equal or below 0.4, and, 1’s for values above 0.4. Pretty useful for separating vegetated from non-vegetated surfaces.</p>
+</div>
+<div id="raster-cropping" class="section level3">
+<h3>Raster cropping</h3>
+<hr />
+<p>Often we want to crop (or clip) a raster data set for a specific area of study. For doing that, the <code>raster</code> package uses the <code>crop</code> function which accepts as input a <code>Raster*</code> object and an <code>Extent</code> object used to define the new bounding coordinates (see <code>?extent</code> for more details).</p>
+<pre class="r"><code># Bounding coordinates
+xmin &lt;- 554615 #xmin(rst) + 5000
+xmax &lt;- 589015 #xmax(rst) - 5000
+ymin &lt;- 4618355 #ymin(rst) + 5000
+ymax &lt;- 4654705 #ymax(rst) - 5000
+
+# Create the extent object by defining the bounding coordinates
+newExtent &lt;- extent(xmin, xmax, ymin, ymax)
+
+# Crop
+cropRst &lt;- crop(rst, newExtent)</code></pre>
+</div>
+<div id="raster-resampling" class="section level3">
+<h3>Raster resampling</h3>
+<hr />
+</div>
+<div id="raster-reprojection" class="section level3">
+<h3>Raster reprojection</h3>
+<hr />
 </div>
 
 

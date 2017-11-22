@@ -16,7 +16,7 @@ knitr::opts_chunk$set(fig.width = 5, fig.height = 4.2, dpi = 80)
 
 ```
 
-## Background 
+### Background 
 
 -------------------------------------------------------------------------------------------------------
 
@@ -35,7 +35,7 @@ For more information information on raster data processing see [here](http://r-e
 and [here](https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1). 
 
 
-## RasterStack objects and Raster algebra
+### RasterStack objects and Raster algebra
 
 -------------------------------------------------------------------------------------------------------
 
@@ -118,28 +118,168 @@ inMemory(rst)
 ```
 
 Similarly `RasterLayer` objects, by default (and unless necessary), a `RasterStack` object only holds 
-metadata and connections to the actual data to spare memory.     
+metadata and connections to the actual data to spare memory.       
+
+Plot the data for a fast visualization.
+
+```{r plot_data, include=FALSE}
+
+plot(rst)
+
+```
+
+https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master
+
+![](./img/plot_data-1.png)
+
+Notice how each layer has a separated tile in the plot.    
 
 Now we can proceed to doing some raster algebra calculations. We will accomplish this by using three 
-different methods: (i) direct, (ii) `calc` function, and, (iii) `overlay` function. 
+different methods: (i) direct, (ii) `calc` function, and, (iii) `overlay` function. In this example we 
+will calculate the Normalized Difference Vegetation Index (NDVI) using the red (b4) and the 
+near-infrared (NIR; b5) bands as: NDVI = (NIR - Red) / (NIR + red)
 
-__Method #1__ (direct)
 
-```{r}
+__.: Method #1__ (direct)
+
+This method allows to directly use the raster layers in the stack called by their indices (or names). 
+Typical operands (e.g., `+`, `-`, `/`, `*`) can be used, as well, as functions (e.g., `sqrt`, `log`, `cos`).
+However, since processing occurs all at once in memory, you must be sure that your data fits into RAM. 
+
+```{r raster_algebra_direct_method}
+
+# Calling raster layers by index
+ndvi <- (rst[[5]] - rst[[4]]) / (rst[[5]] + rst[[4]])
+
+# Or calling by name
+ndvi <- (rst[["b5"]] - rst[["b4"]]) / (rst[["b5"]] + rst[["b4"]])
 
 ```
 
-__Method #2__ (calc function)
+Notice how the data type of the input rasters and the final raster (a ratio) are different (from integer 
+to float; see ?dataType for details):
 
-```{r}
+```{r in_vs_out_data_types}
+
+dataType(rst)
+
+dataType(ndvi)
 
 ```
 
-__Method #3__ (overlay)
 
-```{r}
+__.: Method #2__ (calc function)
+
+For large objects `calc` will compute values by raster chunks thus saving memory. This means that for the 
+result of the defined function to be correct it should not depend on having access to all values at once.
+
+```{r raster_algebra_calc_func}
+
+calcNDVI_1 <- function(x) return((x[[5]] - x[[4]]) / (x[[5]] + x[[4]]))
+
+ndvi1 <- calc(rst, fun = calcNDVI_1)
 
 ```
+
+
+__.: Method #3__ (overlay function)
+
+The overlay function allows to combine two (or more) `Raster*` objects and it should be more efficient when 
+using large raster datasets that cannot be loaded into memory (similarly to `calc`).
+
+```{r raster_algebra_overlay_func}
+
+calcNDVI2 <- function(x, y) return((x - y) / (x + y))
+
+ndvi2 <- overlay(x = rst[[5]], y = rst[[4]], fun = calcNDVI2)
+
+```
+
+Overall, using the first method is not advisable in cases were raster data is "big". For those cases, 
+it is recommendable to use more "memory-friendly" methods such as `calc` or `overlay`. Also, as a 
+general rule, if a calculation needs to use multiple individual layers separately (sometimes in 
+different objects) it will be easier to set up in `overlay` rather than in `calc`.     
+
+Plotting the NDVI data requires some fine tunning because some 'strange' values appeared. Note that 
+NDVI range is between -1.00 and 1.00. In the summary below notice how 'resistant' measures (quartiles) 
+are fine. Values closer to 1 mean higher vegetation cover.
+
+```{r ndvi_range, include = FALSE}
+
+# NDVI summary
+summary(ndvi)
+
+# Set values outside the 'normal' range as NA's
+# Indexing for RasterLayers works similarly to matrix or data frame objects
+ndvi[ndvi < -1] <- NA
+ndvi[ndvi > 1] <- NA
+
+# Plot NDVI
+plot(ndvi)
+
+```
+
+https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master
+
+![](./img/ndvi_range-1.png)
+
+It is also fairly easy to perform logical operations. For example creating a NDVI mask with values 
+above 0.4:
+
+```{r raster_algebra_logical_ops, include=FALSE}
+
+ndviMask <- ndvi > 0.4
+
+plot(ndviMask, main="NDVI mask", xlab = "X-coordinates", ylab = "Y-coordinates")
+
+```
+
+https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master
+
+![](./img/raster_algebra_logical_ops-1.png)
+
+
+This creates a new boolean raster with 0's for pixels that are equal or below 0.4, and, 1's for values above 0.4. 
+Pretty useful for separating vegetated from non-vegetated surfaces.
+
+
+
+### Raster cropping
+
+-------------------------------------------------------------------------------------------------------
+
+Often we want to crop (or clip) a raster data set for a specific area of study. For doing that, the `raster` 
+package uses the `crop` function which accepts as input a `Raster*` object and an `Extent` object used to define 
+the new bounding coordinates (see `?extent` for more details).
+
+```{r raster_cropping}
+
+# Bounding coordinates
+xmin <- 554615 #xmin(rst) + 5000
+xmax <- 589015 #xmax(rst) - 5000
+ymin <- 4618355 #ymin(rst) + 5000
+ymax <- 4654705 #ymax(rst) - 5000
+
+# Create the extent object by defining the bounding coordinates
+newExtent <- extent(xmin, xmax, ymin, ymax)
+
+# Crop
+cropRst <- crop(rst, newExtent)
+
+```
+
+
+
+### Raster resampling
+
+-------------------------------------------------------------------------------------------------------
+
+
+
+### Raster reprojection
+
+-------------------------------------------------------------------------------------------------------
+
 
 
 
