@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Joao Goncalves" />
+
+<meta name="date" content="2017-11-17" />
+
+<title>P2 Spatial data analysis: introduction to raster processing (part-2)</title>
+
+<script src="P2_rasterPackageIntroduction_II-v1_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="P2_rasterPackageIntroduction_II-v1_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="P2_rasterPackageIntroduction_II-v1_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="P2_rasterPackageIntroduction_II-v1_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="P2_rasterPackageIntroduction_II-v1_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="P2_rasterPackageIntroduction_II-v1_files/navigation-1.1/tabsets.js"></script>
+<link href="P2_rasterPackageIntroduction_II-v1_files/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="P2_rasterPackageIntroduction_II-v1_files/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">P2 Spatial data analysis: introduction to raster processing (part-2)</h1>
+<h4 class="author"><em>Joao Goncalves</em></h4>
+<h4 class="date"><em>17 November 2017</em></h4>
+
+</div>
+
+
+<div id="background" class="section level2">
+<h2>Background</h2>
+<hr />
+<p>In the second part of this tutorial series on spatial data analysis using the <code>raster</code> package, we will explore new functionalities, namely:</p>
+<ul>
+<li>Raster algebra,<br />
+</li>
+<li>Cropping<br />
+</li>
+<li>Resampling, and,<br />
+</li>
+<li>Reprojection.</li>
+</ul>
+<p>We will also introduce a new type of object named <code>RasterStack</code>, which, in its essence, is a collection of <code>RasterLayer</code> objects with the same spatial extent, resolution and coordinate reference system (CRS).</p>
+<p>For more information information on raster data processing see <a href="http://r-exercises.com/tags/raster-data">here</a> and <a href="https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1">here</a>.</p>
+</div>
+<div id="rasterstack-objects-and-raster-algebra" class="section level2">
+<h2>RasterStack objects and Raster algebra</h2>
+<hr />
+<p>We will start this tutorial by downloading the sample data and creating a <code>RasterStack</code> composed by multiple image files. Satellite data from <a href="https://landsat.gsfc.nasa.gov/landsat-8/landsat-8-bands/">Landsat8</a> will be used for this purpose. The data contains <a href="http://glcf.umd.edu/data/gls_SR/">surface reflectance</a> information for seven spectral bands (or layers, following the terminology for <code>RasterStack</code> objects) in GeoTIFF file format.</p>
+<p>The following table summarizes some info on Landsat 8 satellite spectral bands.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Band #</th>
+<th>Band name</th>
+<th>Wavelength (micrometers)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Band 1</td>
+<td>Ultra Blue</td>
+<td>0.435 - 0.451</td>
+</tr>
+<tr class="even">
+<td>Band 2</td>
+<td>Blue</td>
+<td>0.452 - 0.512</td>
+</tr>
+<tr class="odd">
+<td>Band 3</td>
+<td>Green</td>
+<td>0.533 - 0.590</td>
+</tr>
+<tr class="even">
+<td>Band 4</td>
+<td>Red</td>
+<td>0.636 - 0.673</td>
+</tr>
+<tr class="odd">
+<td>Band 5</td>
+<td>Near Infrared (NIR)</td>
+<td>0.851 - 0.879</td>
+</tr>
+<tr class="even">
+<td>Band 6</td>
+<td>Shortwave Infrared (SWIR) 1</td>
+<td>1.566 - 1.651</td>
+</tr>
+<tr class="odd">
+<td>Band 7</td>
+<td>Shortwave Infrared (SWIR) 2</td>
+<td>2.107 - 2.294</td>
+</tr>
+</tbody>
+</table>
+<p>Landsat 8 spatial resolution (or pixel size) is 30 meters. Valid reflecance decimal values are typically within 0.00 - 1.00 but, for decreasing file size, the valid range is multiplied by a 10<sup>4</sup> factor to be in integer range 0 - 10000. Image acqusition date is the 15<sup>th</sup> of July 2015.</p>
+<pre class="r"><code>library(raster)</code></pre>
+<pre><code>## Loading required package: sp</code></pre>
+<pre><code>## Warning: package &#39;sp&#39; was built under R version 3.4.1</code></pre>
+<pre class="r"><code>library(raster)
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists(&quot;./data-raw&quot;)) dir.create(&quot;./data-raw&quot;)
+
+## If you run into download problems try changing: method = &quot;wget&quot;
+download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/LT8_PNPG.zip&quot;, &quot;./data-raw/LT8_PNPG.zip&quot;, method = &quot;auto&quot;)
+
+## Uncompress the zip file
+unzip(&quot;./data-raw/LT8_PNPG.zip&quot;, exdir = &quot;./data-raw&quot;)</code></pre>
+<p>With the data downloaded and uncompressed we can now generate a <code>RasterStack</code> object. The <code>stack</code> function accepts a character vector as input containing the paths to each raster layer. To generate this we will use the <code>list.files</code> function.</p>
+<pre class="r"><code># Get file paths and check/print the list
+fp &lt;- list.files(path = &quot;./data-raw&quot;, pattern = &quot;.tif$&quot;, full.names = TRUE)
+print(fp)</code></pre>
+<pre><code>## [1] &quot;./data-raw/LC82040312015193LGN00_sr_band1.tif&quot;
+## [2] &quot;./data-raw/LC82040312015193LGN00_sr_band2.tif&quot;
+## [3] &quot;./data-raw/LC82040312015193LGN00_sr_band3.tif&quot;
+## [4] &quot;./data-raw/LC82040312015193LGN00_sr_band4.tif&quot;
+## [5] &quot;./data-raw/LC82040312015193LGN00_sr_band5.tif&quot;
+## [6] &quot;./data-raw/LC82040312015193LGN00_sr_band6.tif&quot;
+## [7] &quot;./data-raw/LC82040312015193LGN00_sr_band7.tif&quot;</code></pre>
+<pre class="r"><code># Create the raster stack and print basic info 
+rst &lt;- stack(fp)
+print(rst)</code></pre>
+<pre><code>## class       : RasterStack 
+## dimensions  : 1545, 1480, 2286600, 7  (nrow, ncol, ncell, nlayers)
+## resolution  : 30, 30  (x, y)
+## extent      : 549615, 594015, 4613355, 4659705  (xmin, xmax, ymin, ymax)
+## coord. ref. : +proj=utm +zone=29 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0 
+## names       : LC8204031//0_sr_band1, LC8204031//0_sr_band2, LC8204031//0_sr_band3, LC8204031//0_sr_band4, LC8204031//0_sr_band5, LC8204031//0_sr_band6, LC8204031//0_sr_band7 
+## min values  :                   -27,                    -1,                    29,                   -86,                  -216,                  -212,                  -102 
+## max values  :                  3170,                  3556,                  4296,                  4931,                  6904,                  7413,                  6696</code></pre>
+<p>Changing raster layer names (usually difficult to read, as we saw above) is really straightforward. Also, if necessary, using simple names makes it easier to access layers by name in the <code>RasterStack</code>.</p>
+<pre class="r"><code>names(rst) &lt;- paste(&quot;b&quot;,1:7,sep=&quot;&quot;)</code></pre>
+<p>Let’s check if the data is being stored in memory:</p>
+<pre class="r"><code>inMemory(rst)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>Similarly <code>RasterLayer</code> objects, by default (and unless necessary), a <code>RasterStack</code> object only holds metadata and connections to the actual data to spare memory.</p>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,5 +1,5 @@
 ---
-title: "P1_RasterIntroduction"
+title: "P1 Spatial data analysis: introduction to raster processing (part-1)"
 author: "Joao Goncalves"
 date: "17 November 2017"
 output:
@@ -82,8 +82,6 @@ library(rgdal)
 library(sp)
 library(raster)
 
-
-
 ```
 
 Next, download and unzip the sample data. We will use 
@@ -92,12 +90,14 @@ elevation data (in meters a.s.l.) for the Peneda-Geres National Park - Portugal 
 
 ```{r P1_download_data, echo=TRUE, message=FALSE, warning=FALSE}
 
-# If you run it download problems try changing: method = "wget"
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists("./data-raw")) dir.create("./data-raw")
 
+## If you run into download problems try changing: method = "wget"
 download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip", "./data-raw/srtm_pnpg.zip", method = "auto")
 
+## Uncompress the zip file
 unzip("./data-raw/srtm_pnpg.zip", exdir = "./data-raw")
-
 
 ``` 
 
@@ -111,7 +111,7 @@ attributes.
 After finishing the download, load the data into R using the `raster` function (see `?raster` for more details). 
 Then use `print` to inspect the "essential" attributes of the dataset.
 
-```{r P1_load _and_print}
+```{r P1_load_and_print}
 
 # In this example the function uses a string with the data location
 rst <- raster("./data-raw/srtm_pnpg.tif")
@@ -340,7 +340,7 @@ within it.
 ```{r P1_load_ROI, message=FALSE, warning=FALSE}
 
 ## Download the vector data with the woodland patch ROI
-## If you run it download problems try changing: method = "wget"
+## If you run into download problems try changing: method = "wget"
 
 download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/WOODS_PNPG.zip", "./data-raw/WOODS_PNPG.zip", method = "auto")
 

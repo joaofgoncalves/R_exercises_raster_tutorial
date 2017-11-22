@@ -1,0 +1,145 @@
+---
+title: "P2 Spatial data analysis: introduction to raster processing (part-2)"
+author: "Joao Goncalves"
+date: "17 November 2017"
+output:
+  html_document: 
+    self_contained: no
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.path = "img/")
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4.2, dpi = 80)
+
+```
+
+## Background 
+
+-------------------------------------------------------------------------------------------------------
+
+In the second part of this tutorial series on spatial data analysis using the `raster` package, 
+we will explore new functionalities, namely:        
+    
+   * Raster algebra,    
+   * Cropping    
+   * Resampling, and,    
+   * Reprojection.     
+
+We will also introduce a new type of object named `RasterStack`, which, in its essence, is a collection of 
+`RasterLayer` objects with the same spatial extent, resolution and coordinate reference system (CRS). 
+
+For more information information on raster data processing see [here](http://r-exercises.com/tags/raster-data) 
+and [here](https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1). 
+
+
+## RasterStack objects and Raster algebra
+
+-------------------------------------------------------------------------------------------------------
+
+We will start this tutorial by downloading sample raster data and creating a `RasterStack` composed 
+by multiple image files. One satellite image from [Landsat 8](https://landsat.gsfc.nasa.gov/landsat-8/landsat-8-bands/) 
+will be used for this purpose. The data contains [surface reflectance](http://glcf.umd.edu/data/gls_SR/) 
+information for seven spectral bands (or layers, following the terminology for `RasterStack` objects) 
+in GeoTIFF file format.    
+
+The following table summarizes info on Landsat 8 spectral bands.     
+
+
+Band #   | Band name                      | Wavelength (micrometers)
+-------- | ------------------------------ | -------------------------
+Band 1   | Ultra Blue                     | 0.435 - 0.451
+Band 2   | Blue                           | 0.452 - 0.512 
+Band 3   | Green 	                        | 0.533 - 0.590
+Band 4   | Red 	                          | 0.636 - 0.673
+Band 5   | Near Infrared (NIR) 	          | 0.851 - 0.879
+Band 6   | Shortwave Infrared (SWIR) 1    | 1.566 - 1.651
+Band 7   | Shortwave Infrared (SWIR) 2    | 2.107 - 2.294
+
+
+Landsat 8 spatial resolution (or pixel size) is 30 meters. Valid reflecance decimal values 
+are typically within 0.00 - 1.00 but, for decreasing file size, the valid range is multiplied 
+by a 10^4^ factor to be in integer range 0 - 10000. Image acqusition date is the 15^th^ of July 2015.
+
+```{r package_call}
+
+library(raster)
+
+```
+
+```{r raster_input, eval=FALSE, echo=TRUE, message=FALSE, warning=FALSE}
+
+library(raster)
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists("./data-raw")) dir.create("./data-raw")
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/LT8_PNPG.zip", "./data-raw/LT8_PNPG.zip", method = "auto")
+
+## Uncompress the zip file
+unzip("./data-raw/LT8_PNPG.zip", exdir = "./data-raw")
+
+```
+
+With the data downloaded and uncompressed we can now generate a `RasterStack` object. The `stack` function 
+accepts a character vector as input containing the paths to each raster layer. To generate this we will 
+use the `list.files` function.
+
+```{r make_raster_stack}
+
+# Get file paths and check/print the list
+fp <- list.files(path = "./data-raw", pattern = ".tif$", full.names = TRUE)
+print(fp)
+
+# Create the raster stack and print basic info 
+rst <- stack(fp)
+print(rst)
+
+```
+
+Changing raster layer names (usually difficult to read, as we saw above) is really straightforward. 
+Also, if necessary, using simple names makes it easier to access layers by name in the `RasterStack`.
+
+```{r change_raster_layer_names}
+
+names(rst) <- paste("b",1:7,sep="")
+
+```
+
+Let's check if the data is being stored in memory:
+
+```{r rst_in_mem}
+
+inMemory(rst)
+
+```
+
+Similarly `RasterLayer` objects, by default (and unless necessary), a `RasterStack` object only holds 
+metadata and connections to the actual data to spare memory.     
+
+Now we can proceed to doing some raster algebra calculations. We will accomplish this by using three 
+different methods: (i) direct, (ii) `calc` function, and, (iii) `overlay` function. 
+
+__Method #1__ (direct)
+
+```{r}
+
+```
+
+__Method #2__ (calc function)
+
+```{r}
+
+```
+
+__Method #3__ (overlay)
+
+```{r}
+
+```
+
+
+
