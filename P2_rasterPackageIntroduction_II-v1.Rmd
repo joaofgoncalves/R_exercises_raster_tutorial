@@ -121,15 +121,14 @@ metadata and connections to the actual data to spare memory.
 
 Now, let's plot the data for a fast visualization.
 
-```{r plot_data, include=FALSE}
+```{r plot_data, echo=TRUE, eval=FALSE}
 
 plot(rst)
 
 ```
 
-https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master
 
-![](./img/plot_data-1.png)
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/plot_data-1.png)
 
 Notice how each layer has a separated tile in the plot.      
 
@@ -208,7 +207,7 @@ Plotting the NDVI data requires some fine tunning because some 'strange' values 
 NDVI range is between -1.00 and 1.00. In the summary below notice how 'resistant' measures (quartiles) 
 are fine but not the extremes. For NDVI, values closer to 1 represent higher vegetation cover.
 
-```{r ndvi_range, include = FALSE}
+```{r ndvi_range, echo=TRUE, eval=FALSE}
 
 # NDVI summary
 summary(ndvi)
@@ -223,14 +222,13 @@ plot(ndvi, main="NDVI Peneda-Geres National Park", xlab = "X-coordinates", ylab 
 
 ```
 
-https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master
 
-![](./img/ndvi_range-1.png)
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/ndvi_range-1.png)
 
 It is also fairly easy to perform logical operations. For example creating a NDVI mask with values 
 above 0.4:
 
-```{r raster_algebra_logical_ops, include=FALSE}
+```{r raster_algebra_logical_ops, eval=FALSE, echo=TRUE}
 
 ndviMask <- ndvi > 0.4
 
@@ -238,9 +236,8 @@ plot(ndviMask, main="NDVI mask", xlab = "X-coordinates", ylab = "Y-coordinates")
 
 ```
 
-https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master
 
-![](./img/raster_algebra_logical_ops-1.png)
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/raster_algebra_logical_ops-1.png)
 
 
 This creates a new boolean raster with 0's for pixels that are equal or below 0.4, and, 1's for values above 0.4. 
