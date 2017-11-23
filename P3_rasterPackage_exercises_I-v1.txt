@@ -1,0 +1,74 @@
+
+### Exercises with raster data (parts 1-2)
+
+Geospatial data is becoming increasingly used to solve numerous 'real-life' problems (check 
+out some examples <a href="http://gisgeography.com/gis-applications-uses/">here</a>). In turn, 
+R is becoming a powerful open-source solution to handle this type of data, currently providing 
+an exceptional range of functions and tools for GIS and Remote Sensing data analysis.
+
+In particular, <strong>raster data</strong> provides support for representing spatial phenomena 
+by diving the surface into a grid (or matrix) composed by cells of regular size. Each raster 
+dataset has a certain number of columns and rows and each cell contains a value with information 
+for the variable of interest. Stored data can be either: (i) thematic - representing a 
+<strong>discrete</strong> variable (e.g., land cover classification map) or 
+<strong>continuous</strong> (e.g., elevation).
+
+The `raster` package currently provides an extensive set of functions to create, read, export, 
+manipulate and process raster datasets. It also provides low-level functionalities for creating 
+more advanced processing chains as well as the ability to manage large datasets. For more 
+information see: <code>vignette("functions", package = "raster")</code>.
+
+Answers to the exercises are available <a href="http://r-exercises.com/2017/12/27/solutions-to-exercises-with-raster-data-parts-1-2/">here</a>.
+
+You can also check more about raster data on the tutorial series about this topic 
+<a href="http://r-exercises.com/tags/raster-data">here</a>
+
+Start by downloading, uncompressing and loading the sample data for these exercises from this 
+<a href="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip">link</a> 
+(digital elevation model data from SRTM-v4.1 for the Peneda-Geres National Park, Portugal). The data is in GeoTIFF 
+format with name srtm_pnpg.tif.
+
+
+<strong>Exercise 1</strong>
+-> Check out the size of the data in terms of number of rows, columns, cells and layers.
+
+
+<strong>Exercise 2</strong>
+-> Check the spatial resolution of the raster and its coordinate reference system (CRS).
+
+
+<strong>Exercise 3</strong>
+-> Get the raster extent object and calculate the 'height' (in the y-axis) and the length (in x-axis) of the raster. 
+
+
+<strong>Exercise 4</strong>
+-> Calculate the mean and standard-deviation for all pixels.
+
+
+<strong>Exercise 5</strong>
+-> Calculate the 1%, 25%, 50%, 75% and 99% quantiles for all pixels.
+
+
+<strong>Exercise 6</strong>
+-> Using a QQ-plot investigate deviations from normality in the distribution of elevation values.
+
+
+<strong>Exercise 7</strong>
+-> Extract raster values for 100 randomly generated points within the image (use <code>set.seed(12345)</code>) 
+for obtaining the same values as in the solutions).
+
+
+<strong>Exercise 8</strong>
+-> Convert the elevation units of the DEM from meters to feet. Make a RasterStack object with both the raster 
+with meters (original) and feet (new).
+
+
+<strong>Exercise 9</strong>
+-> Crop the raster to the following extent: Upper-left {ymax = 4654705, xmin = 554615}, and, 
+Lower-right {ymin = 4618355, xmax = 589015}.
+
+
+<strong>Exercise 10</strong>
+-> Reproject the sample raster to Datum ETRS 1989 (European Terrestrial Reference System 1989), projection Lambert 
+Azimuthal Equal Area (LAEA) and change the resolution to 100m with bilinear method.
+

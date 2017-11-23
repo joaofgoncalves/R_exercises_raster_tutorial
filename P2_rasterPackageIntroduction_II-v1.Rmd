@@ -30,7 +30,7 @@ we will explore new functionalities, namely:
 We will also introduce a new type of object named `RasterStack`, which, in its essence, is a collection of 
 `RasterLayer` objects with the same spatial extent, resolution and coordinate reference system (CRS). 
 
-For more information information on raster data processing see [here](http://r-exercises.com/tags/raster-data) 
+For more information on raster data processing see [here](http://r-exercises.com/tags/raster-data) 
 and [here](https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1). 
 
 
@@ -116,7 +116,7 @@ inMemory(rst)
 
 ```
 
-Similarly `RasterLayer` objects, by default (and unless necessary), a `RasterStack` object only holds 
+Similarly to `RasterLayer` objects, by default (and unless necessary), a `RasterStack` object only holds 
 metadata and connections to the actual data to spare memory.       
 
 Now, let's plot the data for a fast visualization.
