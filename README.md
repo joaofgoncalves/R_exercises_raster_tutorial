@@ -24,7 +24,7 @@ developed covering different aspects and topics related to raster data processin
     * Number of cells, rows, columns and layers
     * Data type
     * Extent
-    * Coordinate Reference System
+    * Coordinate Reference System (CRS)
    
 3. Raster values
     * Summary and cell statistics
@@ -32,5 +32,32 @@ developed covering different aspects and topics related to raster data processin
     * Extracting raster values
 
 ### P2 Spatial data analysis: introduction to raster processing (part-2)
+
+1. Background
+    * RasterStack objects as multi-layer raster data
+    
+2. Raster algebra
+    * Creating a RasterStack object
+    * Different methods in raster calculation/algebra
+    * Memory usage
+
+3. Cropping    
+    * Cropping a raster dataset
+    * Extent objects
+
+4. Reprojection and resampling
+    * Changing the coordinate reference system (CRS) of a raster
+    * Resampling rasters
+
+### P3 Exercises (parts-1-2)
+
+### P2 Spatial data analysis: introduction to raster processing (part-3)
+
+1. Background
+
+2. Raster masks
+
+3. Raster aggregation
+
 
 

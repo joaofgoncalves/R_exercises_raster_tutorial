@@ -25,8 +25,7 @@ we will explore new functionalities, namely:
     
    * Raster algebra,    
    * Cropping    
-   * Resampling, and,    
-   * Reprojection.     
+   * Reprojection and resampling.    
 
 We will also introduce a new type of object named `RasterStack`, which, in its essence, is a collection of 
 `RasterLayer` objects with the same spatial extent, resolution and coordinate reference system (CRS). 
@@ -35,17 +34,17 @@ For more information information on raster data processing see [here](http://r-e
 and [here](https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1). 
 
 
-### RasterStack objects and Raster algebra
+### RasterStack objects and raster algebra
 
 -------------------------------------------------------------------------------------------------------
 
-We will start this tutorial by downloading sample raster data and creating a `RasterStack` composed 
-by multiple image files. One satellite image from [Landsat 8](https://landsat.gsfc.nasa.gov/landsat-8/landsat-8-bands/) 
+We will start this tutorial by downloading the sample raster data and creating a `RasterStack` composed 
+by multiple image files. One satellite scene from [Landsat 8](https://landsat.gsfc.nasa.gov/landsat-8/landsat-8-bands/) 
 will be used for this purpose. The data contains [surface reflectance](http://glcf.umd.edu/data/gls_SR/) 
 information for seven spectral bands (or layers, following the terminology for `RasterStack` objects) 
 in GeoTIFF file format.    
 
-The following table summarizes info on Landsat 8 spectral bands.     
+The following table summarizes info on Landsat 8 spectral bands used in this tutorial.     
 
 
 Band #   | Band name                      | Wavelength (micrometers)
@@ -59,11 +58,11 @@ Band 6   | Shortwave Infrared (SWIR) 1    | 1.566 - 1.651
 Band 7   | Shortwave Infrared (SWIR) 2    | 2.107 - 2.294
 
 
-Landsat 8 spatial resolution (or pixel size) is 30 meters. Valid reflecance decimal values 
+Landsat 8 spatial resolution (or pixel size) is equal to 30 meters. Valid reflecance decimal values 
 are typically within 0.00 - 1.00 but, for decreasing file size, the valid range is multiplied 
-by a 10^4^ factor to be in integer range 0 - 10000. Image acqusition date is the 15^th^ of July 2015.
+by a 10^4^ scaling factor to be in integer range 0 - 10000. Image acqusition date is the 15^th^ of July 2015.
 
-```{r package_call}
+```{r package_call, echo=FALSE, message=FALSE, warning=FALSE}
 
 library(raster)
 
@@ -101,7 +100,7 @@ print(rst)
 ```
 
 Changing raster layer names (usually difficult to read, as we saw above) is really straightforward. 
-Also, if necessary, using simple names makes it easier to access layers by name in the `RasterStack`.
+Also, if necessary, using simple names makes it easier to access layers _'by name'_ in the `RasterStack`.
 
 ```{r change_raster_layer_names}
 
@@ -120,7 +119,7 @@ inMemory(rst)
 Similarly `RasterLayer` objects, by default (and unless necessary), a `RasterStack` object only holds 
 metadata and connections to the actual data to spare memory.       
 
-Plot the data for a fast visualization.
+Now, let's plot the data for a fast visualization.
 
 ```{r plot_data, include=FALSE}
 
@@ -132,14 +131,19 @@ https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/mas
 
 ![](./img/plot_data-1.png)
 
-Notice how each layer has a separated tile in the plot.    
+Notice how each layer has a separated tile in the plot.      
+
+
+__.: Raster algebra__
 
 Now we can proceed to doing some raster algebra calculations. We will accomplish this by using three 
 different methods: (i) direct, (ii) `calc` function, and, (iii) `overlay` function. In this example we 
 will calculate the Normalized Difference Vegetation Index (NDVI) using the red (b4) and the 
-near-infrared (NIR; b5) bands as: NDVI = (NIR - Red) / (NIR + red)
+near-infrared (NIR; b5) bands as:      
+         
+   NDVI = (NIR - Red) / (NIR + red)         
 
-
+        
 __.: Method #1__ (direct)
 
 This method allows to directly use the raster layers in the stack called by their indices (or names). 
@@ -157,7 +161,7 @@ ndvi <- (rst[["b5"]] - rst[["b4"]]) / (rst[["b5"]] + rst[["b4"]])
 ```
 
 Notice how the data type of the input rasters and the final raster (a ratio) are different (from integer 
-to float; see ?dataType for details):
+to float; see `?dataType` for details):
 
 ```{r in_vs_out_data_types}
 
@@ -189,20 +193,20 @@ using large raster datasets that cannot be loaded into memory (similarly to `cal
 
 ```{r raster_algebra_overlay_func}
 
-calcNDVI2 <- function(x, y) return((x - y) / (x + y))
+calcNDVI_2 <- function(x, y) return((x - y) / (x + y))
 
-ndvi2 <- overlay(x = rst[[5]], y = rst[[4]], fun = calcNDVI2)
+ndvi2 <- overlay(x = rst[[5]], y = rst[[4]], fun = calcNDVI_2)
 
 ```
 
-Overall, using the first method is not advisable in cases were raster data is "big". For those cases, 
+Overall, using the first method is not advisable in cases were raster data is "big". In those cases, 
 it is recommendable to use more "memory-friendly" methods such as `calc` or `overlay`. Also, as a 
 general rule, if a calculation needs to use multiple individual layers separately (sometimes in 
 different objects) it will be easier to set up in `overlay` rather than in `calc`.     
 
 Plotting the NDVI data requires some fine tunning because some 'strange' values appeared. Note that 
 NDVI range is between -1.00 and 1.00. In the summary below notice how 'resistant' measures (quartiles) 
-are fine. Values closer to 1 mean higher vegetation cover.
+are fine but not the extremes. For NDVI, values closer to 1 represent higher vegetation cover.
 
 ```{r ndvi_range, include = FALSE}
 
@@ -215,7 +219,7 @@ ndvi[ndvi < -1] <- NA
 ndvi[ndvi > 1] <- NA
 
 # Plot NDVI
-plot(ndvi)
+plot(ndvi, main="NDVI Peneda-Geres National Park", xlab = "X-coordinates", ylab = "Y-coordinates")
 
 ```
 
@@ -240,8 +244,7 @@ https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/mas
 
 
 This creates a new boolean raster with 0's for pixels that are equal or below 0.4, and, 1's for values above 0.4. 
-Pretty useful for separating vegetated from non-vegetated surfaces.
-
+Very useful for separating vegetated from non-vegetated surfaces! :-)
 
 
 ### Raster cropping
@@ -255,10 +258,11 @@ the new bounding coordinates (see `?extent` for more details).
 ```{r raster_cropping}
 
 # Bounding coordinates
-xmin <- 554615 #xmin(rst) + 5000
-xmax <- 589015 #xmax(rst) - 5000
-ymin <- 4618355 #ymin(rst) + 5000
-ymax <- 4654705 #ymax(rst) - 5000
+xmin <- 554615
+xmax <- 589015 
+
+ymin <- 4618355 
+ymax <- 4654705
 
 # Create the extent object by defining the bounding coordinates
 newExtent <- extent(xmin, xmax, ymin, ymax)
@@ -270,16 +274,67 @@ cropRst <- crop(rst, newExtent)
 
 
 
-### Raster resampling
+### Raster reprojection and resampling
 
 -------------------------------------------------------------------------------------------------------
 
+Often, after downloading some raster data (e.g., satellite imagery) for a given area it is needed to change 
+its coordinate reference system (CRS). `projectRaster` function allows to project the values of a `Raster*` 
+object to a new one with another CRS. It is possible to do this by providing the new projection info as a single 
+argument (a `CRS` object); in this case the function sets the extent and resolution of the new object. 
+To assure that the newly created object lines up with other datasets, you can provide a target `Raster*` 
+object with the properties that the input data should be projected to. `projectRaster` also allows to change 
+the spatial resolution (or pixel size) of the input raster.     
+
+In the first example we will keep the same Datum as in the original data but change from a projected CRS 
+(in Universal Transverse Mercator - UTM 29N) to a geographic lat/lon CRS. Notice how the pixel size is 
+not constant across the x and y axes.
 
 
-### Raster reprojection
+```{r raster_reprojection_1, message=FALSE, warning=FALSE}
 
--------------------------------------------------------------------------------------------------------
+# Create an object of class CRS with the target reference system
+targetCRS <- CRS("+init=epsg:4326")
 
+# Reproject
+ndvi_ReprojWGS84 <- projectRaster(ndvi, method = "ngb", crs = targetCRS)
+
+print(ndvi_ReprojWGS84)
+
+```
+
+
+In this second example we will change the data to the Portuguese official CRS: Datum ETRS 1989, Projection 
+Transverse Mercator, Ellipsoid GRS 1980 (see [here](http://spatialreference.org/ref/epsg/3763/) more details).
+
+```{r raster_reprojection_2, message=FALSE, warning=FALSE}
+
+# Create an object of class CRS with the target reference system
+targetCRS <- CRS("+proj=tmerc +lat_0=39.66825833333333 +lon_0=-8.133108333333334 +k=1 +x_0=0 +y_0=0 +ellps=GRS80 +units=m +no_defs ")
+
+# Reproject
+ndvi_ReprojETRS89 <- projectRaster(ndvi, method = "ngb", crs = targetCRS)
+
+print(ndvi_ReprojETRS89)
+
+
+```
+
+
+Now, let's change the resolution from the initial 30m of Landsat 8, to 25m ('downsampling'). For this purpose 
+we use the `res` parameter:
+
+```{r raster_reprojection_3, message=FALSE, warning=FALSE}
+
+ndvi_ReprojETRS89_20m <- projectRaster(ndvi, res = 25, method = "ngb", crs = targetCRS)
+
+print(ndvi_ReprojETRS89_20m)
+
+
+```
+
+This concludes our exploration of the raster package for this post. Hope you find it useful! `r emo::ji("smile")` 
+`r emo::ji("thumbsup")` `r emo::ji("thumbsup")`
 
 
 
