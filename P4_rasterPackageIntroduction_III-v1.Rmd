@@ -26,7 +26,8 @@ we will explore more functionalities, namely:
     
    * Masking,    
    * Aggregation,
-   * Zonal analysis and vector to raster conversion.
+   * Zonal analysis,
+   * Cross-tabulation of two discrete/categorical datasets.
 
 For more information on raster data processing see 
 [here](http://r-exercises.com/tags/raster-data), as well as the   
@@ -59,10 +60,8 @@ if(!dir.exists("./data-raw")) dir.create("./data-raw")
 ## If you run into download problems try changing: method = "wget"
 download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip", "./data-raw/srtm_pnpg.zip", method = "auto")
 
-## Uncompress the zip file
 unzip("./data-raw/srtm_pnpg.zip", exdir = "./data-raw")
 
-# In this example the function uses a string with the data location
 rst <- raster("./data-raw/srtm_pnpg.tif")
 
 
@@ -80,10 +79,8 @@ library(rgdal)
 ## If you run into download problems try changing: method = "wget"
 download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/BOUNDS_PNPG.zip", "./data-raw/BOUNDS_PNPG.zip", method = "auto")
 
-## Uncompress the zip file
 unzip("./data-raw/BOUNDS_PNPG.zip", exdir = "./data-raw")
 
-## Convert the data into SpatialPolygons (discards the attached attribute but keeps geometry)
 maskLayer <- as(readOGR(dsn = "./data-raw", layer = "pnpg_bounds"), "SpatialPolygons")
 
 
@@ -155,11 +152,11 @@ rstAggFact7SD <- aggregate(rst, fact = 7, fun = sd)
 # Plot the newly aggregated rasters
 par(mfrow = c(2,2))
 
-plot(rstAggFact2Mean, main="Aggregation factor = 2 | Mean")
-plot(rstAggFact2SD, main="Aggregation factor = 2 | SD")
+plot(rstAggFact2Mean, main = "Aggregation factor = 2 | Mean")
+plot(rstAggFact2SD, main = "Aggregation factor = 2 | SD")
 
-plot(rstAggFact7Mean, main="Aggregation factor = 7 | Mean")
-plot(rstAggFact7SD, main="Aggregation factor = 7 | SD")
+plot(rstAggFact7Mean, main = "Aggregation factor = 7 | Mean")
+plot(rstAggFact7SD, main = "Aggregation factor = 7 | SD")
 
 ```
 
@@ -170,12 +167,112 @@ In this particular example (a DEM analysis), and for larger factors, it allows u
 (mean) and also topographic heterogeneity (standard-deviation).
 
 
-### Zonal analysis and vector to raster conversion
+### Zonal analysis
 
 -------------------------------------------------------------------------------------------------------
 
-For the last part of this tutorial we will address how we can calculate 
+For this part of the tutorial we will address zonal analysis. This method allows to summarize the values in a
+`Raster*` object for each "zone" included in a RasterLayer (typically defined by an integer code). Applications 
+include the posibility of summarizing cell values for an administrative region (like the example below) or 
+calculating summary statistics for raster segments (useful in an object-based analysis approach).     
+
+In the example we will calculate zonal statistics for elevation data for each civil parish within the 
+Peneda-Geres National Park (NW Portugal).    
+
+We start by downloading, uncompressing and loading civil parish data:
+
+```{r P4_civil_parish_data_load, fig.width=7.5}
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CIVPARISH_PNPG.zip", "./data-raw/CIVPARISH_PNPG.zip", method = "auto")
+
+unzip("./data-raw/CIVPARISH_PNPG.zip", exdir = "./data-raw")
+
+rstCivPar <- raster("./data-raw/PNPG_CivilParishes.tif")
+
+par(mfrow = c(1,2))
+plot(rst, main="Elevation (meters)")
+plot(maskLayer, add=TRUE)
+plot(rstCivPar, main="Civil parishes PNPG")
+plot(maskLayer, add=TRUE)
+
+```
+
+We can now calculate elevation statistics for each civil parish (identified by an 
+integer number). `zonal` function accepts summaryzing functions (in argument `fun`) 
+with single or multiple outputs 
 
 
+```{r P4_calc_raster_zonal_stats1}
+
+# Single-output
+zonal(rst, rstCivPar, fun=mean)
+
+```
+
+
+```{r P4_calc_raster_zonal_stats2}
+
+# Multi-output
+zonal(rst, rstCivPar, fun=function(x,...) c(MED=median(x,...), MAD=mad(x,...)))
+
+```
+
+
+### Cross-tabulation of two discrete/categorical raster datasets
+
+-------------------------------------------------------------------------------------------------------
+
+Performing a cross-tabulation of two raster dataset is pretty useful when you want to assess land cover 
+changes between two different dates. In this example we will Corine Land Cover (CLC; a dataset from the European 
+Environmental Agency - EEA) for 2006 and 2012 to analyze changes in land cover. 
+In this case we have a categorical raster with integer values corresponding to a given land cover class
+
+
+
+```{r P4_load_CLC_data, message=FALSE, warning=FALSE, fig.width=7, fig.height=4}
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CLC_06_12.zip", "./data-raw/CLC_06_12.zip", method = "auto")
+
+unzip("./data-raw/CLC_06_12.zip", exdir = "./data-raw")
+
+# Load the Corine Land cover dataset for 2006 and 2012
+clc06 <- raster("./data-raw/clc2006_100m.tif")
+clc12 <- raster("./data-raw/clc2012_100m.tif")
+
+# 'Ratify' the rasters, i.e., inform that these are categorical/discrete
+clc06 <- ratify(clc06)
+clc12 <- ratify(clc12)
+
+ct <- crosstab(clc06, clc12, long = TRUE)
+
+knitr::kable(ct)
+
+```
+
+From this table we can assess how much pixels remained in the same class or by some reasoned 
+changed to other
+
+We can also convert the contingency table to a confusion matrix with the following 
+(not-so-pretty) code.
+
+```{r}
+
+# Get the class integer codes and size
+lv <- unique(c(levels(ct[,1]), levels(ct[,2])))
+n <- length(lv)
+
+# Create the square confusion matrix filled with 0's
+cm <- matrix(0, nrow=n, ncol=n, dimnames=list(lv,lv))
+
+# Fill the matrix following each line of the contingency table
+for(i in 1:nrow(ct)){
+  cm[ct[i,1], ct[i,2]] <- ct[i,3]
+}
+
+knitr::kable(cm)
+
+```
 
 
