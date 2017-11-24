@@ -1,0 +1,49 @@
+---
+title: "P4 Spatial data analysis: introduction to raster processing (part-3)"
+author: "Joao Goncalves"
+date: "17 November 2017"
+output:
+  html_document: 
+    self_contained: no
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.path = "img/")
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4.2, dpi = 80)
+
+```
+
+
+### Background 
+
+-------------------------------------------------------------------------------------------------------
+
+In the third part of this tutorial series on spatial data analysis using the `raster` package, 
+we will explore more functionalities, namely:        
+    
+   * Masking,    
+   * Aggregation,   
+   * Zonal analysis
+
+In this post we will also introduce `RasterBrick`'s, a multi-layer raster object typically created from a multi-layer 
+(or multi-band) file although they can also exist entirely in memory. These objects are similar to `RasterStack`s, but 
+processing time should be shorter when using a `RasterBrick` (irrespective if values are on disk or in memory). 
+However these objects are less flexible as they can only point to a single file, while `RasterStacks` can 
+point to multiple different files.
+
+For more information on raster data processing see 
+[here](http://r-exercises.com/tags/raster-data), as well as the   
+[tutorial part-1](https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1), and, 
+[tutorial part-2](https://www.r-exercises.com/2017/12/13/spatial-data-analysis-introduction-to-raster-processing-part-2).
+
+
+### Masking
+
+-------------------------------------------------------------------------------------------------------
+
+
+
+

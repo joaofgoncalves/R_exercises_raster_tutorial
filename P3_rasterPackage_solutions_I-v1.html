@@ -1,6 +1,7 @@
 
 
-Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-with-raster-data-parts-1-2/">these</a> exercises on TOPIC.
+Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-with-raster-data-parts-1-2/">these</a> 
+  exercises on raster data analysis (parts 1-2).
 
 
 <div class="chunk" id="unnamed-chunk-1"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl com">####################</span>
@@ -11,39 +12,47 @@ Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-
 
 <span class="hl kwd">library</span><span class="hl std">(raster)</span>
 
-<span class="hl com">## Create a folder named data-raw inside the working directory to place downloaded data</span>
+<span class="hl com">## Create a folder named data-raw inside the working directory to place downloaded data     </span>
+
 <span class="hl kwa">if</span><span class="hl std">(</span><span class="hl opt">!</span><span class="hl kwd">dir.exists</span><span class="hl std">(</span><span class="hl str">&quot;./data-raw&quot;</span><span class="hl std">))</span> <span class="hl kwd">dir.create</span><span class="hl std">(</span><span class="hl str">&quot;./data-raw&quot;</span><span class="hl std">)</span>
 
-<span class="hl com">## If you run into download problems try changing: method = &quot;wget&quot;</span>
+<span class="hl com">## If you run into download problems try changing: method = &quot;wget&quot;        </span>
+
 <span class="hl kwd">download.file</span><span class="hl std">(</span><span class="hl str">&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip&quot;</span><span class="hl std">,</span>
               <span class="hl str">&quot;./data-raw/srtm_pnpg.zip&quot;</span><span class="hl std">,</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">&quot;auto&quot;</span><span class="hl std">)</span>
 
-<span class="hl com">## Uncompress the zip file</span>
+<span class="hl com">## Uncompress the zip file        </span>
+
 <span class="hl kwd">unzip</span><span class="hl std">(</span><span class="hl str">&quot;./data-raw/srtm_pnpg.zip&quot;</span><span class="hl std">,</span> <span class="hl kwc">exdir</span> <span class="hl std">=</span> <span class="hl str">&quot;./data-raw&quot;</span><span class="hl std">)</span>
 
 <span class="hl std">rst</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">raster</span><span class="hl std">(</span><span class="hl str">&quot;./data-raw/srtm_pnpg.tif&quot;</span><span class="hl std">)</span>
 
-<span class="hl com"># Number of rows, columns and layers</span>
+<span class="hl com"># Number of rows, columns and layers        </span>
+
 <span class="hl kwd">dim</span><span class="hl std">(rst)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## [1] 579 555   1
 </pre></div>
 <div class="source"><pre class="knitr r"><span class="hl com"># Number of rows</span>
+
 <span class="hl kwd">nrow</span><span class="hl std">(rst)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## [1] 579
 </pre></div>
 <div class="source"><pre class="knitr r"><span class="hl com"># Number of columns</span>
+
 <span class="hl kwd">ncol</span><span class="hl std">(rst)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## [1] 555
 </pre></div>
 <div class="source"><pre class="knitr r"><span class="hl com"># Number of layers</span>
+
 <span class="hl kwd">nlayers</span><span class="hl std">(rst)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## [1] 1
 </pre></div>
 <div class="source"><pre class="knitr r"><span class="hl com"># Number of cells</span>
+
 <span class="hl kwd">ncell</span><span class="hl std">(rst)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## [1] 321345
@@ -55,11 +64,13 @@ Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-
 <span class="hl com">####################</span>
 
 <span class="hl com"># Spatial resolution (pixel size in x and y dimensions)</span>
+
 <span class="hl kwd">res</span><span class="hl std">(rst)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## [1] 80 80
 </pre></div>
 <div class="source"><pre class="knitr r"><span class="hl com"># Coordinate reference system: Datum/Ellipsoid: WGS 1984, Projection: UTM 29N, Units: meters</span>
+
 <span class="hl kwd">crs</span><span class="hl std">(rst)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## CRS arguments:
@@ -73,6 +84,7 @@ Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-
 <span class="hl com">####################</span>
 
 <span class="hl com"># The extent object</span>
+
 <span class="hl kwd">extent</span><span class="hl std">(rst)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## class       : Extent 
@@ -82,11 +94,13 @@ Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-
 ## ymax        : 4659697
 </pre></div>
 <div class="source"><pre class="knitr r"><span class="hl com"># Lenght in meters</span>
+
 <span class="hl kwd">xmax</span><span class="hl std">(rst)</span> <span class="hl opt">-</span> <span class="hl kwd">xmin</span><span class="hl std">(rst)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## [1] 44400
 </pre></div>
 <div class="source"><pre class="knitr r"><span class="hl com"># Height in meters</span>
+
 <span class="hl kwd">ymax</span><span class="hl std">(rst)</span> <span class="hl opt">-</span> <span class="hl kwd">ymin</span><span class="hl std">(rst)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## [1] 46320
@@ -98,11 +112,13 @@ Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-
 <span class="hl com">####################</span>
 
 <span class="hl com"># Mean</span>
+
 <span class="hl kwd">cellStats</span><span class="hl std">(rst, mean)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## [1] 747.2759
 </pre></div>
 <div class="source"><pre class="knitr r"><span class="hl com"># Standard-deviation</span>
+
 <span class="hl kwd">cellStats</span><span class="hl std">(rst, sd)</span>
 </pre></div>
 <div class="output"><pre class="knitr r">## [1] 311.8615
@@ -114,6 +130,7 @@ Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-
 <span class="hl com">####################</span>
 
 <span class="hl com"># Raster quantiles</span>
+
 <span class="hl kwd">cellStats</span><span class="hl std">(rst,</span> <span class="hl kwc">stat</span> <span class="hl std">=</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">,</span> <span class="hl kwc">...</span><span class="hl std">)</span> <span class="hl kwd">quantile</span><span class="hl std">(x,</span> <span class="hl kwc">probs</span> <span class="hl std">=</span> <span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">0.01</span><span class="hl std">,</span> <span class="hl num">0.25</span><span class="hl std">,</span> <span class="hl num">0.5</span><span class="hl std">,</span> <span class="hl num">0.75</span><span class="hl std">,</span> <span class="hl num">0.99</span><span class="hl std">), ...))</span>
 </pre></div>
 <div class="output"><pre class="knitr r">##   1%  25%  50%  75%  99% 
@@ -126,9 +143,11 @@ Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-
 <span class="hl com">####################</span>
 
 <span class="hl com"># Get values for the raster (memory may be an issue)</span>
+
 <span class="hl std">x</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">values</span><span class="hl std">(rst)</span>
 
 <span class="hl com"># Make the plot (notice higher deviations for values above the average)</span>
+
 <span class="hl kwd">qqnorm</span><span class="hl std">(x)</span>
 <span class="hl kwd">qqline</span><span class="hl std">(x)</span>
 </pre></div>
@@ -142,12 +161,15 @@ Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-
 <span class="hl kwd">set.seed</span><span class="hl std">(</span><span class="hl num">12345</span><span class="hl std">)</span>
 
 <span class="hl com"># Generate random points with uniform distribution bounded by the raster extent</span>
+
 <span class="hl std">xyRandPoints</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">data.frame</span><span class="hl std">(</span><span class="hl kwc">x</span> <span class="hl std">=</span> <span class="hl kwd">runif</span><span class="hl std">(</span><span class="hl num">100</span><span class="hl std">,</span> <span class="hl kwd">xmin</span><span class="hl std">(rst),</span> <span class="hl kwd">xmax</span><span class="hl std">(rst)),</span> <span class="hl kwc">y</span> <span class="hl std">=</span> <span class="hl kwd">runif</span><span class="hl std">(</span><span class="hl num">100</span><span class="hl std">,</span> <span class="hl kwd">ymin</span><span class="hl std">(rst),</span> <span class="hl kwd">ymax</span><span class="hl std">(rst)))</span>
 
 <span class="hl com"># Convert the initial data frame into a SpatialPoints objects for clarity</span>
+
 <span class="hl std">xyRandPoints</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">SpatialPoints</span><span class="hl std">(xyRandPoints,</span> <span class="hl kwc">proj4string</span> <span class="hl std">=</span> <span class="hl kwd">crs</span><span class="hl std">(rst))</span>
 
 <span class="hl com"># Extract values</span>
+
 <span class="hl std">xyVals</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">extract</span><span class="hl std">(rst, xyRandPoints)</span>
 
 <span class="hl kwd">print</span><span class="hl std">(xyVals)</span>
@@ -189,15 +211,18 @@ Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-
 <span class="hl com">####################</span>
 
 <span class="hl com"># Bounding coordinates</span>
+
 <span class="hl std">xmin</span> <span class="hl kwb">&lt;-</span> <span class="hl num">554615</span>
 <span class="hl std">xmax</span> <span class="hl kwb">&lt;-</span> <span class="hl num">589015</span>
 <span class="hl std">ymin</span> <span class="hl kwb">&lt;-</span> <span class="hl num">4618355</span>
 <span class="hl std">ymax</span> <span class="hl kwb">&lt;-</span> <span class="hl num">4654705</span>
 
 <span class="hl com"># Create the extent object by defining the bounding coordinates</span>
+
 <span class="hl std">newExtent</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">extent</span><span class="hl std">(xmin, xmax, ymin, ymax)</span>
 
 <span class="hl com"># Crop</span>
+
 <span class="hl std">cropRst</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">crop</span><span class="hl std">(rst, newExtent)</span>
 
 <span class="hl kwd">print</span><span class="hl std">(cropRst)</span>
@@ -218,9 +243,11 @@ Below are the solutions to <a href="http://r-exercises.com/2017/12/27/exercises-
 <span class="hl com">####################</span>
 
 <span class="hl com"># Target CRS</span>
+
 <span class="hl std">targetCRS</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">CRS</span><span class="hl std">(</span><span class="hl str">&quot;+init=epsg:3035&quot;</span><span class="hl std">)</span>
 
 <span class="hl com"># Reproject data</span>
+
 <span class="hl std">rst_ETRS89_LAEA</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">projectRaster</span><span class="hl std">(rst,</span> <span class="hl kwc">crs</span> <span class="hl std">= targetCRS,</span> <span class="hl kwc">res</span> <span class="hl std">=</span> <span class="hl num">100</span><span class="hl std">,</span> <span class="hl kwc">method</span> <span class="hl std">=</span> <span class="hl str">'bilinear'</span><span class="hl std">)</span>
 
 <span class="hl kwd">print</span><span class="hl std">(rst_ETRS89_LAEA)</span>
