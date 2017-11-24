@@ -1,0 +1,7 @@
+
+
+In this post we will also introduce `RasterBrick`'s, a multi-layer raster object typically created from a multi-layer 
+(or multi-band) file although they can also exist entirely in memory. These objects are similar to `RasterStack`s, but 
+processing time should be shorter when using a `RasterBrick` (irrespective if values are on disk or in memory). 
+However these objects are less flexible as they can only point to a single file, while `RasterStacks` can 
+point to multiple different files.

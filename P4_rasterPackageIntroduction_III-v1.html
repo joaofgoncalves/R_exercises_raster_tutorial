@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Joao Goncalves" />
+
+<meta name="date" content="2017-11-17" />
+
+<title>P4 Spatial data analysis: introduction to raster processing (part-3)</title>
+
+<script src="P4_rasterPackageIntroduction_III-v1_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="P4_rasterPackageIntroduction_III-v1_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="P4_rasterPackageIntroduction_III-v1_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="P4_rasterPackageIntroduction_III-v1_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="P4_rasterPackageIntroduction_III-v1_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="P4_rasterPackageIntroduction_III-v1_files/navigation-1.1/tabsets.js"></script>
+<link href="P4_rasterPackageIntroduction_III-v1_files/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="P4_rasterPackageIntroduction_III-v1_files/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">P4 Spatial data analysis: introduction to raster processing (part-3)</h1>
+<h4 class="author"><em>Joao Goncalves</em></h4>
+<h4 class="date"><em>17 November 2017</em></h4>
+
+</div>
+
+
+<div id="background" class="section level3">
+<h3>Background</h3>
+<hr />
+<p>In the third part of this tutorial series on spatial data analysis using the <code>raster</code> package, we will explore more functionalities, namely:</p>
+<ul>
+<li>Masking,<br />
+</li>
+<li>Aggregation,</li>
+<li>Vector to raster conversion, and, zonal analysis.</li>
+</ul>
+<p>In this post we will also introduce <code>RasterBrick</code>’s, a multi-layer raster object typically created from a multi-layer (or multi-band) file although they can also exist entirely in memory. These objects are similar to <code>RasterStack</code>s, but processing time should be shorter when using a <code>RasterBrick</code> (irrespective if values are on disk or in memory). However these objects are less flexible as they can only point to a single file, while <code>RasterStacks</code> can point to multiple different files.</p>
+<p>For more information on raster data processing see <a href="http://r-exercises.com/tags/raster-data">here</a>, as well as the<br />
+<a href="https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1">tutorial part-1</a>, and, <a href="https://www.r-exercises.com/2017/12/13/spatial-data-analysis-introduction-to-raster-processing-part-2">tutorial part-2</a>.</p>
+</div>
+<div id="raster-masking" class="section level3">
+<h3>Raster masking</h3>
+<hr />
+<p>Masking a raster is often required when we want to represent and/or analyze only the pixels included in a specific area/region. The remaining pixels are transformed into <code>NA</code>’s (or other user-defined value).</p>
+<p>For this purpose we can use the <code>mask</code> function. The mask can be either a <code>Raster*</code> object (with the same extent and resolution), or a <code>Spatial*</code> object (e.g., <code>SpatialPolygons</code>) in which case, all cells that are not covered by this object are set to <code>updatevalue</code> (set as <code>NA</code> by default).</p>
+<p>We will start by downloading, uncompressing and loading the sample data. A <code>SpatialPolygons*</code> layer will be used as the mask layer. The objective of this example is to mask elevation values that are inside the Peneda-Geres National Park (NW Portugal).</p>
+<pre class="r"><code>library(raster)
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists(&quot;./data-raw&quot;)) dir.create(&quot;./data-raw&quot;)
+
+## If you run into download problems try changing: method = &quot;wget&quot;
+download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip&quot;, &quot;./data-raw/srtm_pnpg.zip&quot;, method = &quot;auto&quot;)
+
+## Uncompress the zip file
+unzip(&quot;./data-raw/srtm_pnpg.zip&quot;, exdir = &quot;./data-raw&quot;)
+
+# In this example the function uses a string with the data location
+rst &lt;- raster(&quot;./data-raw/srtm_pnpg.tif&quot;)</code></pre>
+<p>Now, let’s download and read the mask layer (using <code>rgdal</code>):</p>
+<pre class="r"><code>library(sp)
+library(rgdal)
+
+
+## If you run into download problems try changing: method = &quot;wget&quot;
+download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/BOUNDS_PNPG.zip&quot;, &quot;./data-raw/BOUNDS_PNPG.zip&quot;, method = &quot;auto&quot;)
+
+## Uncompress the zip file
+unzip(&quot;./data-raw/BOUNDS_PNPG.zip&quot;, exdir = &quot;./data-raw&quot;)
+
+## Convert the data into SpatialPolygons (discards the attached attribute but keeps geometry)
+maskLayer &lt;- as(readOGR(dsn = &quot;./data-raw&quot;, layer = &quot;pnpg_bounds&quot;), &quot;SpatialPolygons&quot;)</code></pre>
+<pre><code>## OGR data source with driver: ESRI Shapefile 
+## Source: &quot;./data-raw&quot;, layer: &quot;pnpg_bounds&quot;
+## with 1 features
+## It has 5 fields</code></pre>
+<p>Plot the data to see if everything is OK:</p>
+<pre class="r"><code>plot(rst, main=&quot;Elevation (meters) for Peneda-Geres\n National Park&quot;, xlab=&quot;X-coordinates&quot;, 
+     ylab = &quot;Y-coordinates&quot;)
+plot(maskLayer, add=TRUE)</code></pre>
+<p><img src="img/P4_plot_data-1.png" width="400" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_plot_data-1.png" />
+
+</div>
+<p>Finally, let’s mask the values for the Park boundaries:</p>
+<pre class="r"><code>rstMasked &lt;- mask(rst, maskLayer)
+
+plot(rstMasked, main=&quot;Elevation (meters) for Peneda-Geres\n National Park&quot;, xlab=&quot;X-coordinates&quot;, 
+     ylab = &quot;Y-coordinates&quot;)
+plot(maskLayer, add=TRUE)</code></pre>
+<p><img src="img/P4_mask_raster-1.png" width="400" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_mask_raster-1.png" />
+
+</div>
+<p>From the image, we can see that only pixels occurring inside the Park are represented.</p>
+</div>
+<div id="raster-aggregation" class="section level3">
+<h3>Raster aggregation</h3>
+<hr />
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

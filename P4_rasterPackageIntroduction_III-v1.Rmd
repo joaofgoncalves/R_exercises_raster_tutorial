@@ -25,14 +25,8 @@ In the third part of this tutorial series on spatial data analysis using the `ra
 we will explore more functionalities, namely:        
     
    * Masking,    
-   * Aggregation,   
-   * Zonal analysis
-
-In this post we will also introduce `RasterBrick`'s, a multi-layer raster object typically created from a multi-layer 
-(or multi-band) file although they can also exist entirely in memory. These objects are similar to `RasterStack`s, but 
-processing time should be shorter when using a `RasterBrick` (irrespective if values are on disk or in memory). 
-However these objects are less flexible as they can only point to a single file, while `RasterStacks` can 
-point to multiple different files.
+   * Aggregation,
+   * Zonal analysis and vector to raster conversion.
 
 For more information on raster data processing see 
 [here](http://r-exercises.com/tags/raster-data), as well as the   
@@ -40,9 +34,147 @@ For more information on raster data processing see
 [tutorial part-2](https://www.r-exercises.com/2017/12/13/spatial-data-analysis-introduction-to-raster-processing-part-2).
 
 
-### Masking
+### Raster masking
 
 -------------------------------------------------------------------------------------------------------
+
+Masking a raster is often required when we want to represent and/or analyze only the pixels included in 
+a specific area/region. The remaining pixels are transformed into `NA`'s (or other user-defined value).  
+
+For this purpose we can use the `mask` function. The mask can be either a `Raster*` object (with the 
+same extent and resolution), or a `Spatial*` object (e.g., `SpatialPolygons`) in which case, all cells that 
+are not covered by this object are set to `updatevalue` (set as `NA` by default).    
+
+We will start by downloading, uncompressing and loading the sample data. A `SpatialPolygons*` layer will 
+be used as the mask layer. The objective of this example is to mask elevation values that are inside 
+the Peneda-Geres National Park (NW Portugal).
+
+```{r P4_read_raster_dem, message=FALSE, warning=FALSE}
+
+library(raster)
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists("./data-raw")) dir.create("./data-raw")
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip", "./data-raw/srtm_pnpg.zip", method = "auto")
+
+## Uncompress the zip file
+unzip("./data-raw/srtm_pnpg.zip", exdir = "./data-raw")
+
+# In this example the function uses a string with the data location
+rst <- raster("./data-raw/srtm_pnpg.tif")
+
+
+```
+
+
+Now, let's download and read the mask layer (using `rgdal`):
+
+```{r P4_read_masl_layer, message=FALSE, warning=FALSE}
+
+library(sp)
+library(rgdal)
+
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/BOUNDS_PNPG.zip", "./data-raw/BOUNDS_PNPG.zip", method = "auto")
+
+## Uncompress the zip file
+unzip("./data-raw/BOUNDS_PNPG.zip", exdir = "./data-raw")
+
+## Convert the data into SpatialPolygons (discards the attached attribute but keeps geometry)
+maskLayer <- as(readOGR(dsn = "./data-raw", layer = "pnpg_bounds"), "SpatialPolygons")
+
+
+```
+
+
+Plot the data to see if everything is OK:
+
+```{r P4_plot_data}
+
+plot(rst, main="Elevation (meters) for Peneda-Geres\n National Park", xlab="X-coordinates", 
+     ylab = "Y-coordinates")
+plot(maskLayer, add=TRUE)
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_plot_data-1.png)
+
+
+Finally, let's mask the values for the Park boundaries:
+
+```{r P4_mask_raster}
+
+rstMasked <- mask(rst, maskLayer)
+
+plot(rstMasked, main="Elevation (meters) for Peneda-Geres\n National Park", xlab="X-coordinates", 
+     ylab = "Y-coordinates")
+plot(maskLayer, add=TRUE)
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_mask_raster-1.png)
+
+
+From the image, we can see that only pixels occurring inside the Park are represented or 'masked'.
+
+
+### Raster aggregation
+
+-------------------------------------------------------------------------------------------------------
+
+Raster aggregation is the process of creating a new `RasterLayer` by grouping cell values in 
+a rectangular area to create larger/coarser cells. This grouping can employ any user-defined function to 
+summarize multiple values (in the rectangular area) and provide a single value (e.g., mean, sd, min, 
+max, sum). This 'upsampling' allows to represent and analyze the spatial distribution of cell values 
+inside each rectangular area.      
+
+The `aggregate` function will be used for this purpose. The 'coarseness' of the aggregation is controlled 
+by the `fact` parameter (aggregation factor) which expresses the number of cells in each direction (horizontal 
+and vertical). Alternatively, two integers can be used to separately express the horizontal and vertical 
+aggregation factors.      
+
+Let's see how this works out with different aggregation factors:
+
+    * Aggregation factor 2 - pixel size 160(m)
+    * Aggregation factor 7 - pixel size 560(m)
+
+
+```{r P4_raster_aggregation, fig.width=7, fig.height=7}
+
+# Aggregation factor = 2
+rstAggFact2Mean <- aggregate(rst, fact = 2, fun = mean)
+rstAggFact2SD <- aggregate(rst, fact = 2, fun = sd)
+
+# Aggregation factor = 7
+rstAggFact7Mean <- aggregate(rst, fact = 7, fun = mean)
+rstAggFact7SD <- aggregate(rst, fact = 7, fun = sd)
+
+# Plot the newly aggregated rasters
+par(mfrow = c(2,2))
+
+plot(rstAggFact2Mean, main="Aggregation factor = 2 | Mean")
+plot(rstAggFact2SD, main="Aggregation factor = 2 | SD")
+
+plot(rstAggFact7Mean, main="Aggregation factor = 7 | Mean")
+plot(rstAggFact7SD, main="Aggregation factor = 7 | SD")
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_raster_aggregation-1.png)
+
+Notice the change in coarseness as we move from an aggregation factor of 2 to 7, with much less detail in the latter. 
+In this particular example (a DEM analysis), and for larger factors, it allows us to understand general landforms 
+(mean) and also topographic heterogeneity (standard-deviation).
+
+
+### Zonal analysis and vector to raster conversion
+
+-------------------------------------------------------------------------------------------------------
+
+For the last part of this tutorial we will address how we can calculate 
 
 
 
