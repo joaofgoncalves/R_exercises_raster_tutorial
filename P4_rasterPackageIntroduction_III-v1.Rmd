@@ -184,7 +184,7 @@ object-based image analysis approach).
 In the example we will calculate zonal statistics for elevation data for each civil parish (N=17) 
 within the Peneda-Geres National Park (PGNP - NW Portugal).    
 
-As costumary, We will start by downloading, uncompressing and loading civil parish data:
+As customary, we will start by downloading, uncompressing and loading civil parish data:
 
 ```{r P4_civil_parish_data_load}
 
@@ -335,8 +335,8 @@ plot(spTransform(maskLayer, CRS=crs(clc06)), add=TRUE)
 
 ![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_forest_change-1.png)
 
-The areas highlighted in green correspond to forest or habitat quality loss (probably due 
-to wildfires...).     
+The areas highlighted in green correspond to forest and/or habitat quality loss (probably due 
+to wildfires...).       
 
 This concludes our exploration of the raster package for this post. Hope you find it useful! `r emo::ji("smile")` 
 `r emo::ji("thumbsup")` `r emo::ji("thumbsup")`

@@ -226,7 +226,7 @@ plot(rstAggFact7SD, main = &quot;Aggregation factor = 7 | SD&quot;)</code></pre>
 <p>For this part of the tutorial we will address zonal analysis. This method allows to summarize the values in a <code>Raster*</code> object for each “zone” included in a <code>RasterLayer</code> (typically defined by an integer code). The <code>zonal</code> function is used for this objective. Notice that both <code>Raster*</code> input objects must have the same extent, resolution, and, CRS.</p>
 <p>Applications of this technique include summarizing cell values for administrative regions (like in the example explored below) or, calculating summary statistics for raster segments (useful in an object-based image analysis approach).</p>
 <p>In the example we will calculate zonal statistics for elevation data for each civil parish (N=17) within the Peneda-Geres National Park (PGNP - NW Portugal).</p>
-<p>As costumary, We will start by downloading, uncompressing and loading civil parish data:</p>
+<p>As customary, we will start by downloading, uncompressing and loading civil parish data:</p>
 <pre class="r"><code>## If you run into download problems try changing: method = &quot;wget&quot;
 download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CIVPARISH_PNPG.zip&quot;, &quot;./data-raw/CIVPARISH_PNPG.zip&quot;, method = &quot;auto&quot;)
 
@@ -238,7 +238,6 @@ plot(rst, main=&quot;Elevation (meters)&quot;)
 plot(maskLayer, add=TRUE)
 plot(rstCivPar, main=&quot;Civil parishes PGNP&quot;)
 plot(maskLayer, add=TRUE)</code></pre>
-<p><img src="img/P4_civil_parish_data_plot-1.png" width="600" /></p>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_civil_parish_data_plot-1.png" />
 
@@ -1437,7 +1436,7 @@ plot(spTransform(maskLayer, CRS=crs(clc06)), add=TRUE)</code></pre>
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_forest_change-1.png" />
 
 </div>
-<p>The areas highlighted in green correspond to forest or habitat quality loss (probably due to wildfires…).</p>
+<p>The areas highlighted in green correspond to forest and/or habitat quality loss (probably due to wildfires…).</p>
 <p>This concludes our exploration of the raster package for this post. Hope you find it useful! 😄 👍 👍</p>
 </div>
 
