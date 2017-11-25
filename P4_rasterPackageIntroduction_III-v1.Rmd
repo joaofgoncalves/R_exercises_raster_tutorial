@@ -26,13 +26,11 @@ we will explore more functionalities, namely:
     
    * Masking,    
    * Aggregation,
-   * Zonal analysis,
-   * Cross-tabulation of two discrete/categorical datasets.
+   * Zonal analysis, and,
+   * Cross-tabulation.
 
-For more information on raster data processing see 
-[here](http://r-exercises.com/tags/raster-data), as well as the   
-[tutorial part-1](https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1), and, 
-[tutorial part-2](https://www.r-exercises.com/2017/12/13/spatial-data-analysis-introduction-to-raster-processing-part-2).
+For more information on raster data processing see [here](http://r-exercises.com/tags/raster-data), as well as the [tutorial part-1](https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1), and, [tutorial part-2](https://www.r-exercises.com/2017/12/13/spatial-data-analysis-introduction-to-raster-processing-part-2) of this 
+series.
 
 
 ### Raster masking
@@ -40,15 +38,17 @@ For more information on raster data processing see
 -------------------------------------------------------------------------------------------------------
 
 Masking a raster is often required when we want to represent and/or analyze only the pixels included in 
-a specific area/region. The remaining pixels are transformed into `NA`'s (or other user-defined value).  
+a specific area or region. In turn, the remaining pixels are transformed into `NA`'s (or other 
+user-defined value).  
 
-For this purpose we can use the `mask` function. The mask can be either a `Raster*` object (with the 
-same extent and resolution), or a `Spatial*` object (e.g., `SpatialPolygons`) in which case, all cells that 
-are not covered by this object are set to `updatevalue` (set as `NA` by default).    
+For this purpose we can use the `mask` function. This requires to input a 'mask' layer that can be 
+either a `Raster*` object (with the same extent and resolution), or a `Spatial*` object (e.g., 
+`SpatialPolygons`) in which case, all cells that are not covered by this object are set to `updatevalue` 
+(`NA` by default).    
 
 We will start by downloading, uncompressing and loading the sample data. A `SpatialPolygons*` layer will 
 be used as the mask layer. The objective of this example is to mask elevation values that are inside 
-the Peneda-Geres National Park (NW Portugal).
+the Peneda-Geres National Park (NW Portugal). First up, let's prepare the elevation data:
 
 ```{r P4_read_raster_dem, message=FALSE, warning=FALSE}
 
@@ -67,7 +67,6 @@ rst <- raster("./data-raw/srtm_pnpg.tif")
 
 ```
 
-
 Now, let's download and read the mask layer (using `rgdal`):
 
 ```{r P4_read_masl_layer, message=FALSE, warning=FALSE}
@@ -81,6 +80,7 @@ download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_rast
 
 unzip("./data-raw/BOUNDS_PNPG.zip", exdir = "./data-raw")
 
+# Read the mask layer and convert it to a 'simpler' SpatialPolygons dataset
 maskLayer <- as(readOGR(dsn = "./data-raw", layer = "pnpg_bounds"), "SpatialPolygons")
 
 
@@ -89,7 +89,7 @@ maskLayer <- as(readOGR(dsn = "./data-raw", layer = "pnpg_bounds"), "SpatialPoly
 
 Plot the data to see if everything is OK:
 
-```{r P4_plot_data}
+```{r P4_plot_data, eval=FALSE, echo=TRUE}
 
 plot(rst, main="Elevation (meters) for Peneda-Geres\n National Park", xlab="X-coordinates", 
      ylab = "Y-coordinates")
@@ -100,9 +100,9 @@ plot(maskLayer, add=TRUE)
 ![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_plot_data-1.png)
 
 
-Finally, let's mask the values for the Park boundaries:
+Finally, let's mask the values for the PG National Park boundaries:
 
-```{r P4_mask_raster}
+```{r P4_mask_raster, eval=FALSE, echo=TRUE}
 
 rstMasked <- mask(rst, maskLayer)
 
@@ -115,7 +115,8 @@ plot(maskLayer, add=TRUE)
 ![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_mask_raster-1.png)
 
 
-From the image, we can see that only pixels occurring inside the Park are represented or 'masked'.
+From the image, we can see that only pixels occurring inside the Park are represented 
+or 'masked'. Exactly what we wanted! `r emo::ji("smile")` `r emo::ji("thumbsup")` `r emo::ji("wink")`
 
 
 ### Raster aggregation
@@ -139,7 +140,7 @@ Let's see how this works out with different aggregation factors:
     * Aggregation factor 7 - pixel size 560(m)
 
 
-```{r P4_raster_aggregation, fig.width=7, fig.height=7}
+```{r P4_raster_aggregation, fig.width=7, fig.height=7, eval=FALSE, echo=TRUE}
 
 # Aggregation factor = 2
 rstAggFact2Mean <- aggregate(rst, fact = 2, fun = mean)
@@ -162,9 +163,9 @@ plot(rstAggFact7SD, main = "Aggregation factor = 7 | SD")
 
 ![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_raster_aggregation-1.png)
 
-Notice the change in coarseness as we move from an aggregation factor of 2 to 7, with much less detail in the latter. 
-In this particular example (a DEM analysis), and for larger factors, it allows us to understand general landforms 
-(mean) and also topographic heterogeneity (standard-deviation).
+Notice the change in coarseness as we move from an aggregation factor of 2 to 7, with much less 
+detail in the latter. In this particular example (a DEM analysis), and for larger factors, it allows 
+us to understand general land-forms (mean) and also topographic heterogeneity (standard-deviation).
 
 
 ### Zonal analysis
@@ -172,39 +173,47 @@ In this particular example (a DEM analysis), and for larger factors, it allows u
 -------------------------------------------------------------------------------------------------------
 
 For this part of the tutorial we will address zonal analysis. This method allows to summarize the values in a
-`Raster*` object for each "zone" included in a RasterLayer (typically defined by an integer code). Applications 
-include the posibility of summarizing cell values for an administrative region (like the example below) or 
-calculating summary statistics for raster segments (useful in an object-based analysis approach).     
+`Raster*` object for each "zone" included in a `RasterLayer` (typically defined by an integer code). 
+The `zonal` function is used for this objective. Notice that both `Raster*` input objects must have the same 
+extent, resolution, and, CRS.
 
-In the example we will calculate zonal statistics for elevation data for each civil parish within the 
-Peneda-Geres National Park (NW Portugal).    
+Applications of this technique include summarizing cell values for administrative regions 
+(like in the example explored below) or, calculating summary statistics for raster segments (useful in an 
+object-based image analysis approach).     
 
-We start by downloading, uncompressing and loading civil parish data:
+In the example we will calculate zonal statistics for elevation data for each civil parish (N=17) 
+within the Peneda-Geres National Park (PGNP - NW Portugal).    
 
-```{r P4_civil_parish_data_load, fig.width=7.5}
+As costumary, We will start by downloading, uncompressing and loading civil parish data:
+
+```{r P4_civil_parish_data_load}
 
 ## If you run into download problems try changing: method = "wget"
 download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CIVPARISH_PNPG.zip", "./data-raw/CIVPARISH_PNPG.zip", method = "auto")
 
 unzip("./data-raw/CIVPARISH_PNPG.zip", exdir = "./data-raw")
-
 rstCivPar <- raster("./data-raw/PNPG_CivilParishes.tif")
+```
+
+Plot the data to see if it's OK:
+
+```{r P4_civil_parish_data_plot, fig.width=7.5, eval=FALSE, echo=TRUE}
 
 par(mfrow = c(1,2))
 plot(rst, main="Elevation (meters)")
 plot(maskLayer, add=TRUE)
-plot(rstCivPar, main="Civil parishes PNPG")
+plot(rstCivPar, main="Civil parishes PGNP")
 plot(maskLayer, add=TRUE)
 
 ```
 
-![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_civil_parish_data_load-1.png)
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_civil_parish_data_plot-1.png)
 
 
 We can now calculate elevation statistics for each civil parish (identified by an 
-integer number). `zonal` function accepts summaryzing functions (in argument `fun`) 
-with single or multiple outputs 
-
+integer number). `zonal` accepts summarizing functions (in argument `fun`) 
+with single or multiple outputs. In the example below we will calculate the mean.
 
 ```{r P4_calc_raster_zonal_stats1}
 
@@ -213,6 +222,8 @@ zonal(rst, rstCivPar, fun=mean)
 
 ```
 
+In the next example, column #1 equals the median and column #2 the median-absolute deviation which 
+is obtained by a specific multi-output function:
 
 ```{r P4_calc_raster_zonal_stats2}
 
@@ -226,18 +237,29 @@ zonal(rst, rstCivPar, fun=function(x,...) c(MED=median(x,...), MAD=mad(x,...)))
 
 -------------------------------------------------------------------------------------------------------
 
-Performing a cross-tabulation of two raster dataset is pretty useful when you want to assess land cover 
-changes between two different dates. In this example we will Corine Land Cover (CLC; a dataset from the European 
-Environmental Agency - EEA) for 2006 and 2012 to analyze changes in land cover. 
-In this case we have a categorical raster with integer values corresponding to a given land cover class
+Performing a cross-tabulation of two raster datasets is very useful when, for example, you want 
+to assess land cover changes between two different dates. It is also a preliminary step for generating a 
+confusion matrix from which several classification performance metrics can be calculated.          
+
+In this example, we will use Corine Land Cover (CLC), a dataset from the European Environmental Agency 
+(EEA) for years 2006 and 2012, to analyze changes in land cover composition. In this case, we have two categorical 
+rasters with integer values corresponding to different land cover classes (see details in the table below). 
 
 ```{r P4_CLC_Codes}
 
-read.csv(url("http://some.where.net/data/foo.csv"))
+clcLeg <- read.csv(url("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/legend_clc.csv"),
+                   stringsAsFactors = FALSE)
+
+clcLeg <- data.frame(clcLeg[,1:2], 
+                CLC_abr=toupper(abbreviate(gsub("-"," ",clcLeg[,3]), 6)), 
+                Label=clcLeg[,3], row.names = 1:nrow(clcLeg))
+
+knitr::kable(clcLeg)
 
 ```
 
-
+Now, let's download, uncompress and load the raster data into R and then perform the 
+cross-tabulation:
 
 ```{r P4_load_CLC_data, message=FALSE, warning=FALSE, fig.width=7, fig.height=4}
 
@@ -250,30 +272,37 @@ unzip("./data-raw/CLC_06_12.zip", exdir = "./data-raw")
 clc06 <- raster("./data-raw/clc2006_100m.tif")
 clc12 <- raster("./data-raw/clc2012_100m.tif")
 
-# 'Ratify' the rasters, i.e., inform that these are categorical/discrete
+# 'Ratify' the rasters, i.e., inform that these are 
+# categorical/discrete datasets
 clc06 <- ratify(clc06)
 clc12 <- ratify(clc12)
 
+# Perform the crosstab
 ct <- crosstab(clc06, clc12, long = TRUE)
 
+# Plot the contingency table
 knitr::kable(ct)
 
 ```
 
-From this table we can assess how much pixels remained in the same class or by some reasoned 
-changed to other
+The first two columns of the table show respectively the land cover class in year 2006 and in 2012. 
+The third column shows the number of pixels (frequency). In cases where values for both column 1 and 
+2 coincide then, no land cover transition occurred. On the opposite hand, different values evidence 
+changes.     
 
-We can also convert the contingency table to a confusion matrix with the following 
-(not-so-pretty) code.
+We can also convert the contingency table into a confusion matrix with the following 
+(not-so-pretty) code. Confusion matrices are sometimes easier to analyze than contingency 
+tables... `r emo::ji("wink")`
 
-```{r}
+
+```{r P4_convert_ct_to_cm}
 
 # Get the class integer codes and size
 lv <- unique(c(levels(ct[,1]), levels(ct[,2])))
 n <- length(lv)
 
 # Create the square confusion matrix filled with 0's
-cm <- matrix(0, nrow=n, ncol=n, dimnames=list(lv,lv))
+cm <- matrix(0, nrow = n, ncol = n, dimnames = list(lv,lv))
 
 # Fill the matrix following each line of the contingency table
 for(i in 1:nrow(ct)){
@@ -283,5 +312,36 @@ for(i in 1:nrow(ct)){
 knitr::kable(cm)
 
 ```
+
+From either the contingency table or the matrix we can assess how much pixels remained in 
+the same class, or that for some reason, changed to another land cover category. If we 
+look closely into we see that several areas of forest (Class IDs 23, 24 and 25) changed to 
+class ID 29 - _'Transitional woodland-shrubland'_, and, 33 - _'Burnt areas'_, thus evidencing 
+forest loss.     
+Using a simple rule-set, we can identify pixels that correspond to forest loss areas, identified 
+by the following class transition: _2006 Class IDs {23, 24, 25} ---> 2012 Class IDs {29, 33}_
+
+
+```{r P4_forest_change, eval=FALSE, echo=TRUE}
+# Calculate
+forestLossAreas <- (clc06 %in% 23:25) & (clc12 %in% c(29,33))
+
+# Plot the results
+plot(forestLossAreas, main="Forest loss in PGNP (NW PT)", xlab="x-coord", ylab="y-coord")
+plot(spTransform(maskLayer, CRS=crs(clc06)), add=TRUE)
+
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_forest_change-1.png)
+
+The areas highlighted in green correspond to forest or habitat quality loss (probably due 
+to wildfires...).     
+
+This concludes our exploration of the raster package for this post. Hope you find it useful! `r emo::ji("smile")` 
+`r emo::ji("thumbsup")` `r emo::ji("thumbsup")`
+
+
+
 
 
