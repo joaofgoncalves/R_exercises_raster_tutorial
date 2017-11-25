@@ -198,6 +198,9 @@ plot(maskLayer, add=TRUE)
 
 ```
 
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_civil_parish_data_load-1.png)
+
+
 We can now calculate elevation statistics for each civil parish (identified by an 
 integer number). `zonal` function accepts summaryzing functions (in argument `fun`) 
 with single or multiple outputs 
@@ -227,6 +230,12 @@ Performing a cross-tabulation of two raster dataset is pretty useful when you wa
 changes between two different dates. In this example we will Corine Land Cover (CLC; a dataset from the European 
 Environmental Agency - EEA) for 2006 and 2012 to analyze changes in land cover. 
 In this case we have a categorical raster with integer values corresponding to a given land cover class
+
+```{r P4_CLC_Codes}
+
+read.csv(url("http://some.where.net/data/foo.csv"))
+
+```
 
 
 

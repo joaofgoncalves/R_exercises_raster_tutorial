@@ -132,9 +132,9 @@ $(document).ready(function () {
 <li>Masking,<br />
 </li>
 <li>Aggregation,</li>
-<li>Vector to raster conversion, and, zonal analysis.</li>
+<li>Zonal analysis,</li>
+<li>Cross-tabulation of two discrete/categorical datasets.</li>
 </ul>
-<p>In this post we will also introduce <code>RasterBrick</code>’s, a multi-layer raster object typically created from a multi-layer (or multi-band) file although they can also exist entirely in memory. These objects are similar to <code>RasterStack</code>s, but processing time should be shorter when using a <code>RasterBrick</code> (irrespective if values are on disk or in memory). However these objects are less flexible as they can only point to a single file, while <code>RasterStacks</code> can point to multiple different files.</p>
 <p>For more information on raster data processing see <a href="http://r-exercises.com/tags/raster-data">here</a>, as well as the<br />
 <a href="https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1">tutorial part-1</a>, and, <a href="https://www.r-exercises.com/2017/12/13/spatial-data-analysis-introduction-to-raster-processing-part-2">tutorial part-2</a>.</p>
 </div>
@@ -152,10 +152,8 @@ if(!dir.exists(&quot;./data-raw&quot;)) dir.create(&quot;./data-raw&quot;)
 ## If you run into download problems try changing: method = &quot;wget&quot;
 download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip&quot;, &quot;./data-raw/srtm_pnpg.zip&quot;, method = &quot;auto&quot;)
 
-## Uncompress the zip file
 unzip(&quot;./data-raw/srtm_pnpg.zip&quot;, exdir = &quot;./data-raw&quot;)
 
-# In this example the function uses a string with the data location
 rst &lt;- raster(&quot;./data-raw/srtm_pnpg.tif&quot;)</code></pre>
 <p>Now, let’s download and read the mask layer (using <code>rgdal</code>):</p>
 <pre class="r"><code>library(sp)
@@ -165,10 +163,8 @@ library(rgdal)
 ## If you run into download problems try changing: method = &quot;wget&quot;
 download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/BOUNDS_PNPG.zip&quot;, &quot;./data-raw/BOUNDS_PNPG.zip&quot;, method = &quot;auto&quot;)
 
-## Uncompress the zip file
 unzip(&quot;./data-raw/BOUNDS_PNPG.zip&quot;, exdir = &quot;./data-raw&quot;)
 
-## Convert the data into SpatialPolygons (discards the attached attribute but keeps geometry)
 maskLayer &lt;- as(readOGR(dsn = &quot;./data-raw&quot;, layer = &quot;pnpg_bounds&quot;), &quot;SpatialPolygons&quot;)</code></pre>
 <pre><code>## OGR data source with driver: ESRI Shapefile 
 ## Source: &quot;./data-raw&quot;, layer: &quot;pnpg_bounds&quot;
@@ -194,11 +190,1088 @@ plot(maskLayer, add=TRUE)</code></pre>
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_mask_raster-1.png" />
 
 </div>
-<p>From the image, we can see that only pixels occurring inside the Park are represented.</p>
+<p>From the image, we can see that only pixels occurring inside the Park are represented or ‘masked’.</p>
 </div>
 <div id="raster-aggregation" class="section level3">
 <h3>Raster aggregation</h3>
 <hr />
+<p>Raster aggregation is the process of creating a new <code>RasterLayer</code> by grouping cell values in a rectangular area to create larger/coarser cells. This grouping can employ any user-defined function to summarize multiple values (in the rectangular area) and provide a single value (e.g., mean, sd, min, max, sum). This ‘upsampling’ allows to represent and analyze the spatial distribution of cell values inside each rectangular area.</p>
+<p>The <code>aggregate</code> function will be used for this purpose. The ‘coarseness’ of the aggregation is controlled by the <code>fact</code> parameter (aggregation factor) which expresses the number of cells in each direction (horizontal and vertical). Alternatively, two integers can be used to separately express the horizontal and vertical aggregation factors.</p>
+<p>Let’s see how this works out with different aggregation factors:</p>
+<pre><code>* Aggregation factor 2 - pixel size 160(m)
+* Aggregation factor 7 - pixel size 560(m)</code></pre>
+<pre class="r"><code># Aggregation factor = 2
+rstAggFact2Mean &lt;- aggregate(rst, fact = 2, fun = mean)
+rstAggFact2SD &lt;- aggregate(rst, fact = 2, fun = sd)
+
+# Aggregation factor = 7
+rstAggFact7Mean &lt;- aggregate(rst, fact = 7, fun = mean)
+rstAggFact7SD &lt;- aggregate(rst, fact = 7, fun = sd)
+
+# Plot the newly aggregated rasters
+par(mfrow = c(2,2))
+
+plot(rstAggFact2Mean, main = &quot;Aggregation factor = 2 | Mean&quot;)
+plot(rstAggFact2SD, main = &quot;Aggregation factor = 2 | SD&quot;)
+
+plot(rstAggFact7Mean, main = &quot;Aggregation factor = 7 | Mean&quot;)
+plot(rstAggFact7SD, main = &quot;Aggregation factor = 7 | SD&quot;)</code></pre>
+<p><img src="img/P4_raster_aggregation-1.png" width="560" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P4_raster_aggregation-1.png" />
+
+</div>
+<p>Notice the change in coarseness as we move from an aggregation factor of 2 to 7, with much less detail in the latter. In this particular example (a DEM analysis), and for larger factors, it allows us to understand general landforms (mean) and also topographic heterogeneity (standard-deviation).</p>
+</div>
+<div id="zonal-analysis" class="section level3">
+<h3>Zonal analysis</h3>
+<hr />
+<p>For this part of the tutorial we will address zonal analysis. This method allows to summarize the values in a <code>Raster*</code> object for each “zone” included in a RasterLayer (typically defined by an integer code). Applications include the posibility of summarizing cell values for an administrative region (like the example below) or calculating summary statistics for raster segments (useful in an object-based analysis approach).</p>
+<p>In the example we will calculate zonal statistics for elevation data for each civil parish within the Peneda-Geres National Park (NW Portugal).</p>
+<p>We start by downloading, uncompressing and loading civil parish data:</p>
+<pre class="r"><code>## If you run into download problems try changing: method = &quot;wget&quot;
+download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CIVPARISH_PNPG.zip&quot;, &quot;./data-raw/CIVPARISH_PNPG.zip&quot;, method = &quot;auto&quot;)
+
+unzip(&quot;./data-raw/CIVPARISH_PNPG.zip&quot;, exdir = &quot;./data-raw&quot;)
+
+rstCivPar &lt;- raster(&quot;./data-raw/PNPG_CivilParishes.tif&quot;)
+
+par(mfrow = c(1,2))
+plot(rst, main=&quot;Elevation (meters)&quot;)
+plot(maskLayer, add=TRUE)
+plot(rstCivPar, main=&quot;Civil parishes PNPG&quot;)
+plot(maskLayer, add=TRUE)</code></pre>
+<p><img src="img/P4_civil_parish_data_load-1.png" width="600" /></p>
+<p>We can now calculate elevation statistics for each civil parish (identified by an integer number). <code>zonal</code> function accepts summaryzing functions (in argument <code>fun</code>) with single or multiple outputs</p>
+<pre class="r"><code># Single-output
+zonal(rst, rstCivPar, fun=mean)</code></pre>
+<pre><code>##       zone     value
+##  [1,]    1 1041.2407
+##  [2,]    2  308.6019
+##  [3,]    3  622.7727
+##  [4,]    4  790.4464
+##  [5,]    5  970.8552
+##  [6,]    6  787.0810
+##  [7,]    7  549.3588
+##  [8,]    8  963.2459
+##  [9,]    9  307.2516
+## [10,]   10 1106.3882
+## [11,]   11 1156.9009
+## [12,]   12  713.7014
+## [13,]   13 1044.0795
+## [14,]   14  641.9319
+## [15,]   15 1023.6904
+## [16,]   16  867.7098
+## [17,]   17  930.2353</code></pre>
+<pre class="r"><code># Multi-output
+zonal(rst, rstCivPar, fun=function(x,...) c(MED=median(x,...), MAD=mad(x,...)))</code></pre>
+<pre><code>##       zone value_1  value_2
+##  [1,]    1  1059.0 171.9816
+##  [2,]    2   271.0 131.9514
+##  [3,]    3   637.0 191.2554
+##  [4,]    4   813.5 405.4911
+##  [5,]    5   956.0 293.5548
+##  [6,]    6   765.0 392.8890
+##  [7,]    7   555.5 306.1569
+##  [8,]    8   954.0 219.4248
+##  [9,]    9   289.0 182.3598
+## [10,]   10  1125.0 123.0558
+## [11,]   11  1162.0  96.3690
+## [12,]   12   698.0 332.1024
+## [13,]   13  1024.0 240.1812
+## [14,]   14   617.0 265.3854
+## [15,]   15  1017.0 195.7032
+## [16,]   16   875.0 413.6454
+## [17,]   17   977.0 189.7728</code></pre>
+</div>
+<div id="cross-tabulation-of-two-discretecategorical-raster-datasets" class="section level3">
+<h3>Cross-tabulation of two discrete/categorical raster datasets</h3>
+<hr />
+<p>Performing a cross-tabulation of two raster dataset is pretty useful when you want to assess land cover changes between two different dates. In this example we will Corine Land Cover (CLC; a dataset from the European Environmental Agency - EEA) for 2006 and 2012 to analyze changes in land cover. In this case we have a categorical raster with integer values corresponding to a given land cover class</p>
+<pre class="r"><code>## If you run into download problems try changing: method = &quot;wget&quot;
+download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CLC_06_12.zip&quot;, &quot;./data-raw/CLC_06_12.zip&quot;, method = &quot;auto&quot;)
+
+unzip(&quot;./data-raw/CLC_06_12.zip&quot;, exdir = &quot;./data-raw&quot;)
+
+# Load the Corine Land cover dataset for 2006 and 2012
+clc06 &lt;- raster(&quot;./data-raw/clc2006_100m.tif&quot;)
+clc12 &lt;- raster(&quot;./data-raw/clc2012_100m.tif&quot;)
+
+# &#39;Ratify&#39; the rasters, i.e., inform that these are categorical/discrete
+clc06 &lt;- ratify(clc06)
+clc12 &lt;- ratify(clc12)
+
+ct &lt;- crosstab(clc06, clc12, long = TRUE)
+
+knitr::kable(ct)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th align="left">clc2006_100m</th>
+<th align="left">clc2012_100m</th>
+<th align="right">Freq</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td align="left">1</td>
+<td align="left">1</td>
+<td align="right">28</td>
+</tr>
+<tr class="even">
+<td>25</td>
+<td align="left">2</td>
+<td align="left">2</td>
+<td align="right">503</td>
+</tr>
+<tr class="odd">
+<td>49</td>
+<td align="left">7</td>
+<td align="left">7</td>
+<td align="right">50</td>
+</tr>
+<tr class="even">
+<td>73</td>
+<td align="left">12</td>
+<td align="left">12</td>
+<td align="right">1966</td>
+</tr>
+<tr class="odd">
+<td>97</td>
+<td align="left">13</td>
+<td align="left">13</td>
+<td align="right">206</td>
+</tr>
+<tr class="even">
+<td>121</td>
+<td align="left">15</td>
+<td align="left">15</td>
+<td align="right">196</td>
+</tr>
+<tr class="odd">
+<td>145</td>
+<td align="left">18</td>
+<td align="left">18</td>
+<td align="right">3242</td>
+</tr>
+<tr class="even">
+<td>169</td>
+<td align="left">19</td>
+<td align="left">19</td>
+<td align="right">6229</td>
+</tr>
+<tr class="odd">
+<td>193</td>
+<td align="left">20</td>
+<td align="left">20</td>
+<td align="right">5638</td>
+</tr>
+<tr class="even">
+<td>197</td>
+<td align="left">25</td>
+<td align="left">20</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td>217</td>
+<td align="left">21</td>
+<td align="left">21</td>
+<td align="right">14263</td>
+</tr>
+<tr class="even">
+<td>219</td>
+<td align="left">24</td>
+<td align="left">21</td>
+<td align="right">6</td>
+</tr>
+<tr class="odd">
+<td>222</td>
+<td align="left">27</td>
+<td align="left">21</td>
+<td align="right">9</td>
+</tr>
+<tr class="even">
+<td>223</td>
+<td align="left">29</td>
+<td align="left">21</td>
+<td align="right">7</td>
+</tr>
+<tr class="odd">
+<td>228</td>
+<td align="left">41</td>
+<td align="left">21</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td>240</td>
+<td align="left">21</td>
+<td align="left">23</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td>241</td>
+<td align="left">23</td>
+<td align="left">23</td>
+<td align="right">14763</td>
+</tr>
+<tr class="even">
+<td>243</td>
+<td align="left">25</td>
+<td align="left">23</td>
+<td align="right">5</td>
+</tr>
+<tr class="odd">
+<td>246</td>
+<td align="left">29</td>
+<td align="left">23</td>
+<td align="right">167</td>
+</tr>
+<tr class="even">
+<td>249</td>
+<td align="left">33</td>
+<td align="left">23</td>
+<td align="right">28</td>
+</tr>
+<tr class="odd">
+<td>265</td>
+<td align="left">24</td>
+<td align="left">24</td>
+<td align="right">6761</td>
+</tr>
+<tr class="even">
+<td>266</td>
+<td align="left">25</td>
+<td align="left">24</td>
+<td align="right">26</td>
+</tr>
+<tr class="odd">
+<td>269</td>
+<td align="left">29</td>
+<td align="left">24</td>
+<td align="right">563</td>
+</tr>
+<tr class="even">
+<td>286</td>
+<td align="left">21</td>
+<td align="left">25</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td>288</td>
+<td align="left">24</td>
+<td align="left">25</td>
+<td align="right">44</td>
+</tr>
+<tr class="even">
+<td>289</td>
+<td align="left">25</td>
+<td align="left">25</td>
+<td align="right">9183</td>
+</tr>
+<tr class="odd">
+<td>292</td>
+<td align="left">29</td>
+<td align="left">25</td>
+<td align="right">637</td>
+</tr>
+<tr class="even">
+<td>313</td>
+<td align="left">26</td>
+<td align="left">26</td>
+<td align="right">12791</td>
+</tr>
+<tr class="odd">
+<td>315</td>
+<td align="left">29</td>
+<td align="left">26</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td>318</td>
+<td align="left">33</td>
+<td align="left">26</td>
+<td align="right">112</td>
+</tr>
+<tr class="odd">
+<td>333</td>
+<td align="left">23</td>
+<td align="left">27</td>
+<td align="right">24</td>
+</tr>
+<tr class="even">
+<td>334</td>
+<td align="left">24</td>
+<td align="left">27</td>
+<td align="right">103</td>
+</tr>
+<tr class="odd">
+<td>335</td>
+<td align="left">25</td>
+<td align="left">27</td>
+<td align="right">101</td>
+</tr>
+<tr class="even">
+<td>337</td>
+<td align="left">27</td>
+<td align="left">27</td>
+<td align="right">58718</td>
+</tr>
+<tr class="odd">
+<td>338</td>
+<td align="left">29</td>
+<td align="left">27</td>
+<td align="right">54</td>
+</tr>
+<tr class="even">
+<td>341</td>
+<td align="left">33</td>
+<td align="left">27</td>
+<td align="right">172</td>
+</tr>
+<tr class="odd">
+<td>353</td>
+<td align="left">19</td>
+<td align="left">29</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td>356</td>
+<td align="left">23</td>
+<td align="left">29</td>
+<td align="right">371</td>
+</tr>
+<tr class="odd">
+<td>357</td>
+<td align="left">24</td>
+<td align="left">29</td>
+<td align="right">1398</td>
+</tr>
+<tr class="even">
+<td>358</td>
+<td align="left">25</td>
+<td align="left">29</td>
+<td align="right">1466</td>
+</tr>
+<tr class="odd">
+<td>359</td>
+<td align="left">26</td>
+<td align="left">29</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td>360</td>
+<td align="left">27</td>
+<td align="left">29</td>
+<td align="right">96</td>
+</tr>
+<tr class="odd">
+<td>361</td>
+<td align="left">29</td>
+<td align="left">29</td>
+<td align="right">23358</td>
+</tr>
+<tr class="even">
+<td>363</td>
+<td align="left">32</td>
+<td align="left">29</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td>364</td>
+<td align="left">33</td>
+<td align="left">29</td>
+<td align="right">390</td>
+</tr>
+<tr class="even">
+<td>366</td>
+<td align="left">41</td>
+<td align="left">29</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td>385</td>
+<td align="left">31</td>
+<td align="left">31</td>
+<td align="right">1706</td>
+</tr>
+<tr class="even">
+<td>406</td>
+<td align="left">27</td>
+<td align="left">32</td>
+<td align="right">15</td>
+</tr>
+<tr class="odd">
+<td>407</td>
+<td align="left">29</td>
+<td align="left">32</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td>409</td>
+<td align="left">32</td>
+<td align="left">32</td>
+<td align="right">35083</td>
+</tr>
+<tr class="odd">
+<td>410</td>
+<td align="left">33</td>
+<td align="left">32</td>
+<td align="right">24</td>
+</tr>
+<tr class="even">
+<td>425</td>
+<td align="left">23</td>
+<td align="left">33</td>
+<td align="right">25</td>
+</tr>
+<tr class="odd">
+<td>426</td>
+<td align="left">24</td>
+<td align="left">33</td>
+<td align="right">294</td>
+</tr>
+<tr class="even">
+<td>427</td>
+<td align="left">25</td>
+<td align="left">33</td>
+<td align="right">50</td>
+</tr>
+<tr class="odd">
+<td>429</td>
+<td align="left">27</td>
+<td align="left">33</td>
+<td align="right">457</td>
+</tr>
+<tr class="even">
+<td>430</td>
+<td align="left">29</td>
+<td align="left">33</td>
+<td align="right">392</td>
+</tr>
+<tr class="odd">
+<td>457</td>
+<td align="left">40</td>
+<td align="left">40</td>
+<td align="right">98</td>
+</tr>
+<tr class="even">
+<td>471</td>
+<td align="left">23</td>
+<td align="left">41</td>
+<td align="right">9</td>
+</tr>
+<tr class="odd">
+<td>481</td>
+<td align="left">41</td>
+<td align="left">41</td>
+<td align="right">3800</td>
+</tr>
+<tr class="even">
+<td>505</td>
+<td align="left">128</td>
+<td align="left">128</td>
+<td align="right">97250</td>
+</tr>
+</tbody>
+</table>
+<p>From this table we can assess how much pixels remained in the same class or by some reasoned changed to other</p>
+<p>We can also convert the contingency table to a confusion matrix with the following (not-so-pretty) code.</p>
+<pre class="r"><code># Get the class integer codes and size
+lv &lt;- unique(c(levels(ct[,1]), levels(ct[,2])))
+n &lt;- length(lv)
+
+# Create the square confusion matrix filled with 0&#39;s
+cm &lt;- matrix(0, nrow=n, ncol=n, dimnames=list(lv,lv))
+
+# Fill the matrix following each line of the contingency table
+for(i in 1:nrow(ct)){
+  cm[ct[i,1], ct[i,2]] &lt;- ct[i,3]
+}
+
+knitr::kable(cm)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th align="right">1</th>
+<th align="right">2</th>
+<th align="right">7</th>
+<th align="right">12</th>
+<th align="right">13</th>
+<th align="right">15</th>
+<th align="right">18</th>
+<th align="right">19</th>
+<th align="right">20</th>
+<th align="right">21</th>
+<th align="right">23</th>
+<th align="right">24</th>
+<th align="right">25</th>
+<th align="right">26</th>
+<th align="right">27</th>
+<th align="right">29</th>
+<th align="right">31</th>
+<th align="right">32</th>
+<th align="right">33</th>
+<th align="right">40</th>
+<th align="right">41</th>
+<th align="right">128</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td align="right">28</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td align="right">0</td>
+<td align="right">503</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">50</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1966</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">206</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>15</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">196</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>18</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">3242</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>19</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">6229</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>20</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">5638</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>21</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">14263</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>23</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">14763</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">24</td>
+<td align="right">371</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">25</td>
+<td align="right">0</td>
+<td align="right">9</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>24</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">6</td>
+<td align="right">0</td>
+<td align="right">6761</td>
+<td align="right">44</td>
+<td align="right">0</td>
+<td align="right">103</td>
+<td align="right">1398</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">294</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>25</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">5</td>
+<td align="right">26</td>
+<td align="right">9183</td>
+<td align="right">0</td>
+<td align="right">101</td>
+<td align="right">1466</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">50</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>26</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">12791</td>
+<td align="right">0</td>
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>27</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">9</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">58718</td>
+<td align="right">96</td>
+<td align="right">0</td>
+<td align="right">15</td>
+<td align="right">457</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>29</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">7</td>
+<td align="right">167</td>
+<td align="right">563</td>
+<td align="right">637</td>
+<td align="right">4</td>
+<td align="right">54</td>
+<td align="right">23358</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">392</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>31</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1706</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>32</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">35083</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>33</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">28</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">112</td>
+<td align="right">172</td>
+<td align="right">390</td>
+<td align="right">0</td>
+<td align="right">24</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>40</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">98</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>41</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">3800</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td>128</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">97250</td>
+</tr>
+</tbody>
+</table>
 </div>
 
 

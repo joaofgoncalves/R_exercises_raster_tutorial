@@ -1,0 +1,22 @@
+Raster_value,CLC_code,Label
+1,111,Continuous urban fabric
+2,112,Discontinuous urban fabric
+7,131,Mineral extraction sites
+12,211,Non-irrigated arable land
+13,212,Permanently irrigated land
+15,221,Vineyards
+18,231,Pastures
+19,241,Annual crops with permanent crops
+20,242,Complex cultivation patterns
+21,243,Agriculture with natural vegetation
+23,311,Broad-leaved forest
+24,312,Coniferous forest
+25,313,Mixed forest
+26,321,Natural grasslands
+27,322,Moors and heathland
+29,324,Transitional woodland-shrub
+31,332,Bare rocks
+32,333,Sparsely vegetated areas
+33,334,Burnt areas
+40,511,Water courses
+41,512,Water bodies
