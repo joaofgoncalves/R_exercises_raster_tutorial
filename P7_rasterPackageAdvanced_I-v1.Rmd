@@ -174,7 +174,7 @@ names(rst) <- paste("b",1:7,sep="")
 
 Plot the data in RGB display (bands 4,3,2) to see if everything is fine:
 
-```{r P7_plot_rgb_LT8, fig.height=5.75, fig.width=5.75, eval=FALSE, echo=TRUE}
+```{r P7_plot_rgb_LT8, fig.height=5, fig.width=5, eval=FALSE, echo=TRUE}
 
 plotRGB(rst, r=4, g=3, b=2, scale=10000, stretch="lin", main="RGB composite (b4,b3,b2) of Landsat-8")
 
@@ -386,11 +386,12 @@ knitr::kable(clustPerfSI, digits = 3, align = "c",
 
 We can also make a plot for better comparing the two algorithms:    
 
-```{r P7_silhouette_plot_clust_algos, fig.height = 5.25, fig.width=6, eval=FALSE, echo=TRUE}
+```{r P7_silhouette_plot_clust_algos, fig.height = 4, fig.width=4.5, eval=FALSE, echo=TRUE}
 
 plot(clustPerfSI[,1], clustPerfSI[,2], 
      xlim = c(1,13), ylim = range(clustPerfSI[,2:3]), type = "n", 
-     ylab="Avg. Silhouette Index", xlab="# of clusters")
+     ylab="Avg. Silhouette Index", xlab="# of clusters",
+     main="Silhouette index by # of clusters")
 
 # Plot Avg Silhouette values across # of clusters for K-means
 lines(clustPerfSI[,1], clustPerfSI[,2], col="red")
@@ -418,7 +419,7 @@ Finally let's make a plot of the best solution according to the silhouette index
 
 ```{r P7_best_clust_solution, eval=FALSE, echo=TRUE}
 
-plot(rstKM[[5]])
+plot(rstKM[[4]])
 
 ```
 
