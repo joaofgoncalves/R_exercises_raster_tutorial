@@ -3,22 +3,9 @@
 .RData
 .Ruserdata
 
-/data-unzip/
-./data-unzip/
 data-unzip/
-
-/data-raw/
-./data-raw/
 data-raw/
-
-/P1_rasterPackageIntroduction_I-v1_files/
-./P1_rasterPackageIntroduction_I-v1_files/
 P1_rasterPackageIntroduction_I-v1_files/
-
-/P2_rasterPackageIntroduction_II-v1_files/
-./P2_rasterPackageIntroduction_II-v1_files/
 P2_rasterPackageIntroduction_II-v1_files/
-
-/P4_rasterPackageIntroduction_III-v1_files/
-./P4_rasterPackageIntroduction_III-v1_files/
 P4_rasterPackageIntroduction_III-v1_files/
+P7_rasterPackageAdvanced_I-v1_files/

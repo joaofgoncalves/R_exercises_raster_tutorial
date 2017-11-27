@@ -1,0 +1,38 @@
+In the exercises below we cover the basics of ordering vectors, matrices and data frames. We consider both column-wise and row-wise ordering, single and multiple variables, ascending and descending sorting, and sorting based on numeric, character and factor variables. Before proceeding, it might be helpful to look over the help pages for the <code>sort</code>, <code>order</code>, and <code>xtfrm</code> functions.
+
+Answers to the exercises are available <a href="http://r-exercises.com/2016/03/01/get-your-stuff-in-order-solutions/">here</a>.
+
+If you obtained a different (correct) answer than those listed on the solutions page, please feel free to post your answer as a comment on that page.
+
+<strong>Exercise 1</strong>
+Sort the vector <code>x <- c(1, 3, 2, 5, 4)</code> in:
+a. ascending order
+b. descending order 
+
+<strong>Exercise 2</strong>
+Sort the matrix <code>x <- matrix(1:100, ncol=10)</code>:
+a. in descending order by its second column (call the sorted matrix x1)
+b. in descending order by its second row (call the sorted matrix x2)
+
+<strong>Exercise 3</strong>
+Sort only the first column of <code>x</code> in descending order.
+
+<strong>Exercise 4</strong>
+Consider the <code>women</code> data. 
+a. Confirm that the data are sorted in increasing order for both the <code>height</code> and <code>weight</code> variable, without looking at the data.
+b. Create a new variable <code>bmi</code>, based on the following equation: BMI = (  Weight in Pounds / (Height in inches) x (Height in inches) ) x 703. Check, again without looking at the data, whether BMI increases monotonically with weight and height. 
+c. Sort the dataframe on <code>bmi</code>, and its variable names alphabetically 
+
+<strong>Exercise 5</strong>
+Consider the <code>CO2</code> data.
+a. Sort the data based on the <code>Plant</code> variable, alphabetically. (Note that <code>Plant</code> is a factor!). Check that the data are sorted correctly by printing the data on the screen.
+b. Sort the data based on the <code>uptake</code> (increasing) and <code>Plant</code> (alphabetically) variables (in that order).
+c. Sort again, based on <code>uptake</code> (increasing) and <code>Plant</code> (reversed alphabetically), in that order.
+
+<strong>Exercise 6</strong>
+Create a dataframe <code>df</code> with 40 columns, as follows:
+<code>df <- as.data.frame(matrix(sample(1:5, 2000, T), ncol=40))</code>
+a. Sort the dataframe on all 40 columns, from left to right, in increasing order.
+a. Sort the dataframe on all 40 columns, from left to right, in decreasing order.
+c. Sort the dataframe on all 40 columns, from right to left, in increasing order.
+

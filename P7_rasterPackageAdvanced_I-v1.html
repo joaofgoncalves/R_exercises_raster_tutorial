@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Joao Goncalves" />
+
+<meta name="date" content="2017-11-25" />
+
+<title>P7 – Advanced techniques with raster data (part-1) - Unsupervised Classification</title>
+
+<script src="P7_rasterPackageAdvanced_I-v1_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="P7_rasterPackageAdvanced_I-v1_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="P7_rasterPackageAdvanced_I-v1_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="P7_rasterPackageAdvanced_I-v1_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="P7_rasterPackageAdvanced_I-v1_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="P7_rasterPackageAdvanced_I-v1_files/navigation-1.1/tabsets.js"></script>
+<link href="P7_rasterPackageAdvanced_I-v1_files/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="P7_rasterPackageAdvanced_I-v1_files/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">P7 – Advanced techniques with raster data (part-1) - Unsupervised Classification</h1>
+<h4 class="author"><em>Joao Goncalves</em></h4>
+<h4 class="date"><em>25 November 2017</em></h4>
+
+</div>
+
+
+<div id="background" class="section level3">
+<h3>Background</h3>
+<hr />
+<p>The process of <em>unsupervised classification</em> (UC; also commonly known as <em>clustering</em>) uses the properties and moments of the statistical distribution of pixels within a feature space (e.g., formed by different spectral bands) to differentiate between relatively similar groups. <em>Unsupervised classification</em> provides an effective way of partitioning remotely-sensed imagery in a multispectral feature space and extracting useful land-cover information. We can perhaps differentiate UC from clustering because the first implies that we investigate <em>a posteriori</em> the results and, label each class accordingly to its properties. For example, if the objective is to obtain a land cover map, then different groups will perhaps be differentiated and labeled into urban, agriculture, forest and other classes alike.</p>
+<p>Clustering is also known as a <em>data reduction</em> technique, i.e. it compresses highly diverse information at pixel-level into groups or clusters of pixels with similar and more homogeneous values. Contrarily to <em>supervised classification</em> , the <em>unsupervised</em> version does not require the user to provide training samples or cases. In fact, UC needs minimal inputs from the operator and typically only the definition of the number of groups and which bands to use are given. Then the algorithm attempts to provide the best solution to cluster pixel values such that <em>‘within-group’</em> distances are minimized and <em>‘between-groups’</em> separation is maximized.</p>
+<p>In this post we will explore how to:</p>
+<ul>
+<li>Perform unsupervised classification / clustering,<br />
+</li>
+<li>Compare the performance of different clustering algorithms, and,<br />
+</li>
+<li>Assess the <em>“best”</em> number of clusters/groups to capture the data.</li>
+</ul>
+<p>One satellite scene from <a href="https://landsat.gsfc.nasa.gov/landsat-8/landsat-8-bands/">Landsat 8</a> will be used for this purpose. The data contains <a href="http://glcf.umd.edu/data/gls_SR/">surface reflectance</a> information for seven spectral bands (or layers, following the terminology for <code>RasterStack</code> objects) in GeoTIFF file format.</p>
+<p>The following table summarizes info on Landsat 8 spectral bands used in this tutorial.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Band #</th>
+<th>Band name</th>
+<th>Wavelength (micrometers)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Band 1</td>
+<td>Ultra Blue</td>
+<td>0.435 - 0.451</td>
+</tr>
+<tr class="even">
+<td>Band 2</td>
+<td>Blue</td>
+<td>0.452 - 0.512</td>
+</tr>
+<tr class="odd">
+<td>Band 3</td>
+<td>Green</td>
+<td>0.533 - 0.590</td>
+</tr>
+<tr class="even">
+<td>Band 4</td>
+<td>Red</td>
+<td>0.636 - 0.673</td>
+</tr>
+<tr class="odd">
+<td>Band 5</td>
+<td>Near Infrared (NIR)</td>
+<td>0.851 - 0.879</td>
+</tr>
+<tr class="even">
+<td>Band 6</td>
+<td>Shortwave Infrared (SWIR) 1</td>
+<td>1.566 - 1.651</td>
+</tr>
+<tr class="odd">
+<td>Band 7</td>
+<td>Shortwave Infrared (SWIR) 2</td>
+<td>2.107 - 2.294</td>
+</tr>
+</tbody>
+</table>
+<p>Landsat 8 spatial resolution (or pixel size) is equal to 30 meters. Valid reflectance decimal values are typically within 0.00 - 1.00 but, for decreasing file size, the valid range is multiplied by a 10<sup>4</sup> scaling factor to be in integer range 0 - 10000. Image acquisition date is the 15<sup>th</sup> of July 2015.</p>
+<p>For more information on raster data processing see <a href="http://r-exercises.com/tags/raster-data">here</a>, as well as the <a href="https://www.r-exercises.com/2017/11/29/spatial-data-analysis-introduction-to-raster-processing-part-1">tutorial part-1</a>, <a href="https://www.r-exercises.com/2017/12/13/spatial-data-analysis-introduction-to-raster-processing-part-2">tutorial part-2</a>, <a href="https://www.r-exercises.com/2018/01/10/spatial-data-analysis-introduction-to-raster-processing-part-3">tutorial part-3</a>, and, <a href="https://www.r-exercises.com/2018/01/24/spatial-data-analysis-introduction-to-raster-processing-part-4">tutorial part-4</a> of this series.</p>
+</div>
+<div id="unsupervised-classification-clustering" class="section level3">
+<h3>Unsupervised classification / clustering</h3>
+<hr />
+<p>For performing the unsupervised classification / clustering we will employ and compare two algorithms:</p>
+<ul>
+<li><strong>K-means</strong>, and,<br />
+</li>
+<li><strong>CLARA</strong></li>
+</ul>
+<div id="k-means-algorithm" class="section level4">
+<h4>K-means algorithm</h4>
+<p>The <em>k-means</em> clustering algorithm attempts to define the centroid of each cluster with its mean value. This means that data are partitioned into <em>k</em> clusters in which each observation belongs to the cluster with the nearest mean, serving as a prototype of the cluster. In a geometric interpretation, k-means partitions the data space into <em>Voronoi cells</em> (see plot below). K-means provides an “exclusive” solution, meaning that each observation belongs to one (and only one) cluster. The algorithm is generally efficient for dealing with large dataset which commonly happens for raster data (e.g., satellite or aerial images).</p>
+<div class="figure">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/K-means_convergence.gif/256px-K-means_convergence.gif" alt="K-means convergence (with Voronoi cells defined by the black lines)" />
+<p class="caption">K-means convergence (with Voronoi cells defined by the black lines)</p>
+</div>
+</div>
+<div id="clara-algorithm" class="section level4">
+<h4>CLARA algorithm</h4>
+<p>The CLARA (Clustering LARge Application) algorithm is based on the Partition Around Medoids (PAM) algorithm which in turn is an implementation of K-medoids… 😟… so let’s try to dig in by parts. Also, since these posts are intended to be <em>‘short-and-sweet’</em>, I will not use mathematical notation nor pseudocode in descriptions. There are plenty of awesome books and online resources on these subjects that can be consulted for more information.</p>
+<p>The <em>k-medoids</em> algorithm is a clustering algorithm similar to k-means. Both are <em>partitional</em> algorithms in the sense that they break-up up the data into groups and both attempt to minimize the distance between points labeled in a cluster and a point designated as the center of that cluster.</p>
+<p>However, in contrast to the k-means algorithm, k-medoids chooses specific data-points as centers (named as <em>medoids</em>) and works with a generalization of the Manhattan Norm to define the distance between data-points. A medoid can be defined as the object of a cluster whose average dissimilarity to all the objects in the cluster is minimal. i.e., it is a most centrally located point in the cluster.</p>
+<p>Generally, k-medoids is more robust to noise and outliers as compared to k-means because it minimizes a sum of pairwise dissimilarities instead of a sum of squared Euclidean distances.</p>
+<p><em>PAM</em>, is the most common realization of the k-medoids clustering algorithm. PAM uses a greedy search which may not find the optimum solution, however it is faster than a exhaustive search. PAM has a high computational cost and uses a large amount of memory to compute the dissimilarity object. This leads us to the <em>CLARA</em> algorithm!<br />
+<em>CLARA</em> randomly chooses a small portion of the actual data as a representative of the data and then medoids are chosen from this sample using <em>PAM</em>. If the sample is robustly selected, in a fairly random manner and with enough data-points, it should closely represent the original dataset.</p>
+<p><em>CLARA</em> draws multiple samples of the dataset, applies PAM to each sample, finds the medoids, and then returns its best clustering as the output. At first, a sample dataset is drawn from the original dataset and the PAM algorithm is applied to find the <em>k</em> medoids. Using these <em>k</em> medoids and the whole dataset, the ‘current’ dissimilarity is calculated. If it is smaller than the one you get in the previous iteration, then these <em>k</em> medoids are kept as the best ones. This process of selection is iteratevely repeated a specified number of times.</p>
+<p>In R, the <code>clara</code> function from the <code>cluster</code> package implements this algorithm. It accepts dissimilarities calculated based on <code>&quot;euclidean&quot;</code> or <code>&quot;manhattan&quot;</code> distance. Euclidean distances are root sum-of-squares of differences while Manhattan distances are the sum of absolute differences.</p>
+</div>
+<div id="workflow" class="section level4">
+<h4>Workflow</h4>
+<p>Our approach to clustering the Landsat 8 spectral raster data will employ two stages:</p>
+<ol style="list-style-type: lower-roman">
+<li>Cluster image data with <em>K-means</em> and <em>CLARA</em> for a <em>number of clusters</em> between 2 and 12;<br />
+</li>
+<li>Assess each clustering solution performance through the average <em>Silhouette Index</em>.</li>
+</ol>
+<p>Let’s start by downloading and uncompressing the Landsat-8 surface reflectance sample data for the Peneda-Geres National Park:</p>
+<pre class="r"><code>## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists(&quot;./data-raw&quot;)) dir.create(&quot;./data-raw&quot;)
+
+## If you run into download problems try changing: method = &quot;wget&quot;
+download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/LT8_PNPG_MultiBand.zip&quot;, &quot;./data-raw/LT8_PNPG_MultiBand.zip&quot;, method = &quot;auto&quot;)
+
+## Uncompress the zip file
+unzip(&quot;./data-raw/LT8_PNPG_MultiBand.zip&quot;, exdir = &quot;./data-raw&quot;)</code></pre>
+<p>Now, let’s read the multi-band GeoTIFF file into R as a <code>RasterBrick</code> object:</p>
+<pre class="r"><code>library(raster)
+
+# Load the multi-band GeoTIFF file with brick function
+rst &lt;- brick(&quot;./data-raw/LC82040312015193LGN00_sr_b_1_7.tif&quot;)
+
+# Change band names      
+names(rst) &lt;- paste(&quot;b&quot;,1:7,sep=&quot;&quot;)  </code></pre>
+<p>Plot the data in RGB display (bands 4,3,2) to see if everything is fine:</p>
+<pre class="r"><code>plotRGB(rst, r=4, g=3, b=2, scale=10000, stretch=&quot;lin&quot;, main=&quot;RGB composite (b4,b3,b2) of Landsat-8&quot;)</code></pre>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P7_plot_rgb_LT8-1.png" />
+
+</div>
+<p>Data is OK which means we can proceed with <em>step #1</em>, i.e. clustering raster data with both algorithms and for different numbers of clusters (from 2 to 12).</p>
+<p>For simplifying the processing workflow, the ‘internal’ values of the raster object will be entirely load up into memory into a <code>data.frame</code> object (in this case with 2.286610^{6} rows - one for each cell; and, 7 columns - one for each layer; see also <code>?values</code> and <code>?getValues</code> for more info on this). Although this makes things easier and faster, in some cases, depending on the size of the image and its number of layers/bands it will be unfeasible to push all the data into RAM.</p>
+<p>However, if your raster object is too large to fit into a data frame object in memory, you can still use R to perform K-means clustering. Packages such as <strong>RSToolbox</strong> provide an implementation of k-means that may be more suited for your case. Check out <a href="https://github.com/bleutner/RStoolbox">here</a> and the function <code>unsuperClass</code> <a href="https://github.com/bleutner/RStoolbox/blob/9394b0297b7d7f564aca94b1bf6907f685ecd836/R/unsuperClass.R">here</a>.</p>
+<p>Also, we will need to be careful regarding <code>NA</code>’s because clustering algorithms will not run with these values (typically throwing an error). One simple way is to use a logical index to subset the data.</p>
+<p>Let’s see how this works out in actual R code (use comments as guidance):</p>
+<pre class="r"><code>library(cluster)
+
+# Extract all values from the raster into a data frame
+rstDF &lt;- values(rst)
+
+# Check NA&#39;s in the data
+idx &lt;- complete.cases(rstDF)
+
+# Initiate the raster datasets that will hold all clustering solutions 
+# from 2 groups/clusters up to 12
+rstKM &lt;- raster(rst[[1]])
+rstCLARA &lt;- raster(rst[[1]])
+
+
+for(nClust in 2:12){
+  
+  cat(&quot;-&gt; Clustering data for nClust =&quot;,nClust,&quot;......&quot;)
+  
+  # Perform K-means clustering
+  km &lt;- kmeans(rstDF[idx,], centers = nClust, iter.max = 50)
+  
+  # Perform CLARA&#39;s clustering (using manhattan distance)
+  cla &lt;- clara(rstDF[idx, ], k = nClust, metric = &quot;manhattan&quot;)
+  
+  # Create a temporary integer vector for holding cluster numbers
+  kmClust &lt;- vector(mode = &quot;integer&quot;, length = ncell(rst))
+  claClust &lt;- vector(mode = &quot;integer&quot;, length = ncell(rst))
+  
+  # Generate the temporary clustering vector for K-means (keeps track of NA&#39;s)
+  kmClust[!idx] &lt;- NA
+  kmClust[idx] &lt;- km$cluster
+  
+  # Generate the temporary clustering vector for CLARA (keeps track of NA&#39;s too ;-)
+  claClust[!idx] &lt;- NA
+  claClust[idx] &lt;- cla$clustering
+  
+  # Create a temporary raster for holding the new clustering solution
+  # K-means
+  tmpRstKM &lt;- raster(rst[[1]])
+  # CLARA
+  tmpRstCLARA &lt;- raster(rst[[1]])
+
+  # Set raster values with the cluster vector
+  # K-means
+  values(tmpRstKM) &lt;- kmClust
+  # CLARA
+  values(tmpRstCLARA) &lt;- claClust
+  
+  # Stack the temporary rasters onto the final ones
+  if(nClust==2){
+    rstKM    &lt;- tmpRstKM
+    rstCLARA &lt;- tmpRstCLARA
+  }else{
+    rstKM    &lt;- stack(rstKM, tmpRstKM)
+    rstCLARA &lt;- stack(rstCLARA, tmpRstCLARA)
+  }
+  
+  cat(&quot; done!\n\n&quot;)
+}
+
+# Write the clustering solutions for each algorithm
+writeRaster(rstKM,&quot;./data-raw/LT8_PGNP_KMeans_nc2_12-1.tif&quot;, overwrite=TRUE)
+writeRaster(rstCLARA,&quot;./data-raw/LT8_PGNP_CLARA_nc2_12-1.tif&quot;, overwrite=TRUE)</code></pre>
+</div>
+</div>
+<div id="evaluating-unsupervised-classification-clustering-performance" class="section level3">
+<h3>Evaluating unsupervised classification / clustering performance</h3>
+<hr />
+<p>For evaluating the performance of each clustering solution and selecting the <em>“best”</em> number of clusters for partitioning the sample data, we will use the <strong>silhouette Index</strong>.</p>
+<p>More specifically, the <em>silhouette</em> refers to a method of interpreting and validating the consistency within clusters of data (hence its called an <em>internal criteria</em> in <code>clusterCrit</code> package). In a nutshell, this method provides a graphical representation that depicts how well each clustered object lies within its cluster. Also, the silhouette value is a measure of how similar an object is to its own cluster (assessing intra-cluster <em>cohesion</em>) compared to other clusters (denoting between-clusters’ <em>separation</em>).</p>
+<p>The silhouette index ranges from −1 to +1, where a high value indicates that the object is well matched to its own cluster and poorly matched to neighboring clusters. If most objects have a high value, then the clustering configuration is considered appropriate. If many points have a low or negative value, then the clustering configuration may have too many or too few clusters.</p>
+<p>In R, the <code>clusterCrit</code> package provides an implementation of this internal clustering criteria in the <code>intCriteria</code>(among many other, such as the Dunn, Ball-Hall, Davies-Bouldin, Dunn, GDI, Tau indices). Check out <code>library(help=&quot;clusterCrit&quot;)</code> and <code>vignette(&quot;clusterCrit&quot;)</code> for more info on this package.</p>
+<p>Now that we have defined the conceptual underpinnings of the silhouette index, we can implement it in R code. One important detail before we proceed: since calculating the silhouette index is a rather slow process for large numbers’ of observations (&gt;5000), we will use a stratified random sampling approach.</p>
+<p>This means that we will take a subset of cells from each cluster and calculate the index based on those. We are assuming that the sample is somewhat robust and representative of the whole cells. Ideally, this process should be repeated several times and then an average value could calculated (using a <em>bootstrap</em> approach would also be nice here). However, for the sake of simplicity (and also because estimation generally yields relatively low errors… you have to trust me here… 😉) we will use a single sample of cells in this example.</p>
+<p>Let’s see how this works out (use comments to guide you through the code):</p>
+<pre class="r"><code>library(clusterCrit)
+
+
+# Start a data frame that will store all silhouette values
+# for k-means and CLARA   
+clustPerfSI &lt;- data.frame(nClust = 2:12, SI_KM = NA, SI_CLARA = NA)
+
+
+for(i in 1:nlayers(rstKM)){ # Iterate through each layer
+  
+  cat(&quot;-&gt; Evaluating clustering performance for nClust =&quot;,(2:12)[i],&quot;......&quot;)
+  
+  # Extract random cell samples stratified by cluster
+  cellIdx_RstKM &lt;- sampleStratified(rstKM[[i]], size = 2000)
+  cellIdx_rstCLARA &lt;- sampleStratified(rstCLARA[[i]], size = 2000)
+  
+  # Get cell values from the Stratified Random Sample from the raster 
+  # data frame object (rstDF)
+  rstDFStRS_KM &lt;- rstDF[cellIdx_RstKM[,1], ]
+  rstDFStRS_CLARA &lt;- rstDF[cellIdx_rstCLARA[,1], ]
+  
+  # Make sure all columns are numeric (intCriteria function is picky on this)
+  rstDFStRS_KM[] &lt;- sapply(rstDFStRS_KM, as.numeric)
+  rstDFStRS_CLARA[] &lt;- sapply(rstDFStRS_CLARA, as.numeric)
+  
+  # Compute the sample-based Silhouette index for: 
+  #    
+  # K-means
+  clCritKM &lt;- intCriteria(traj = rstDFStRS_KM, 
+                          part = as.integer(cellIdx_RstKM[,2]), 
+                          crit = &quot;Silhouette&quot;)
+  # and CLARA
+  clCritCLARA &lt;- intCriteria(traj = rstDFStRS_CLARA, 
+                             part = as.integer(cellIdx_rstCLARA[,2]), 
+                             crit = &quot;Silhouette&quot;)
+
+  # Write the silhouette index value to clustPerfSI data frame holding 
+  # all results
+  clustPerfSI[i, &quot;SI_KM&quot;]    &lt;- clCritKM[[1]][1]
+  clustPerfSI[i, &quot;SI_CLARA&quot;] &lt;- clCritCLARA[[1]][1]
+  
+  cat(&quot; done!\n\n&quot;)
+  
+}
+
+write.csv(clustPerfSI, file = &quot;./data-raw/clustPerfSI.csv&quot;, row.names = FALSE)</code></pre>
+<p>Let’s print out a nice table with the silhouette index results for comparing each clustering solution:</p>
+<pre class="r"><code>knitr::kable(clustPerfSI, digits = 3, align = &quot;c&quot;, 
+             col.names = c(&quot;#clusters&quot;,&quot;Avg. Silhouette (k-means)&quot;,&quot;Avg. Silhouette (CLARA)&quot;))</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="center">#clusters</th>
+<th align="center">Avg. Silhouette (k-means)</th>
+<th align="center">Avg. Silhouette (CLARA)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">2</td>
+<td align="center">0.378</td>
+<td align="center">0.351</td>
+</tr>
+<tr class="even">
+<td align="center">3</td>
+<td align="center">0.381</td>
+<td align="center">0.258</td>
+</tr>
+<tr class="odd">
+<td align="center">4</td>
+<td align="center">0.306</td>
+<td align="center">0.308</td>
+</tr>
+<tr class="even">
+<td align="center">5</td>
+<td align="center">0.442</td>
+<td align="center">0.280</td>
+</tr>
+<tr class="odd">
+<td align="center">6</td>
+<td align="center">0.427</td>
+<td align="center">0.393</td>
+</tr>
+<tr class="even">
+<td align="center">7</td>
+<td align="center">0.388</td>
+<td align="center">0.260</td>
+</tr>
+<tr class="odd">
+<td align="center">8</td>
+<td align="center">0.384</td>
+<td align="center">0.272</td>
+</tr>
+<tr class="even">
+<td align="center">9</td>
+<td align="center">0.367</td>
+<td align="center">0.325</td>
+</tr>
+<tr class="odd">
+<td align="center">10</td>
+<td align="center">0.326</td>
+<td align="center">0.311</td>
+</tr>
+<tr class="even">
+<td align="center">11</td>
+<td align="center">0.356</td>
+<td align="center">0.285</td>
+</tr>
+<tr class="odd">
+<td align="center">12</td>
+<td align="center">0.320</td>
+<td align="center">0.255</td>
+</tr>
+</tbody>
+</table>
+<p>We can also make a plot for better comparing the two algorithms:</p>
+<pre class="r"><code>plot(clustPerfSI[,1], clustPerfSI[,2], 
+     xlim = c(1,13), ylim = range(clustPerfSI[,2:3]), type = &quot;n&quot;, 
+     ylab=&quot;Avg. Silhouette Index&quot;, xlab=&quot;# of clusters&quot;)
+
+# Plot Avg Silhouette values across # of clusters for K-means
+lines(clustPerfSI[,1], clustPerfSI[,2], col=&quot;red&quot;)
+# Plot Avg Silhouette values across # of clusters for CLARA
+lines(clustPerfSI[,1], clustPerfSI[,3], col=&quot;blue&quot;)
+
+# Grid lines
+abline(v = 1:13, lty=2, col=&quot;light grey&quot;)
+abline(h = seq(0.30,0.44,0.02), lty=2, col=&quot;light grey&quot;)
+
+legend(&quot;topright&quot;, legend=c(&quot;K-means&quot;,&quot;CLARA&quot;), col=c(&quot;red&quot;,&quot;blue&quot;), lty=1, lwd=1)</code></pre>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P7_silhouette_plot_clust_algos-1.png" />
+
+</div>
+<p>From both the table and the plot we can see widely different results in terms of clustering performance with the <strong>k-means algorithm performing clearly better</strong>. This may be due to the fact that CLARA works on a subset of the data and hence is less capable of finding the best cluster centers. In addition, for the k-means algorithm, we can see that partioning the data into 5 groups/clusters seems to be the best option (although 6 also seems a perfectly reasonable solution).</p>
+<p>Finally let’s make a plot of the best solution according to the silhouette index:</p>
+<pre class="r"><code>plot(rstKM[[5]])</code></pre>
+<p><img src="img/P7_best_clust_solution-1.png" width="400" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P7_best_clust_solution-1.png" />
+
+</div>
+<p>One final step (typical in the Remote Sensing domain) would be to interpret the clustering results, analyze their spectral and land cover properties and provide a label to each cluster (e.g., urban, agriculture, forest). Albeit very important, that is outside the scope of this tutorial 😉 😉</p>
+<p>This concludes our exploration of the raster package and unsupervised classification for this post. Hope you find it useful! 😄 👍 👍</p>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

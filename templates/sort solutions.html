@@ -1,0 +1,78 @@
+Below are the solutions to <a href="http://r-exercises.com/2016/03/01/get-your-stuff-in-order-exercises/">these</a> exercises on sorting and ordering.
+
+<div class="chunk" id="unnamed-chunk-1"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl com">###############</span>
+<span class="hl com">#             #</span>
+<span class="hl com"># Exercise 1  #</span>
+<span class="hl com">#             #</span>
+<span class="hl com">###############</span>
+
+<span class="hl std">x</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">,</span> <span class="hl num">3</span><span class="hl std">,</span> <span class="hl num">2</span><span class="hl std">,</span> <span class="hl num">5</span><span class="hl std">,</span> <span class="hl num">4</span><span class="hl std">)</span>
+<span class="hl kwd">sort</span><span class="hl std">(x)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] 1 2 3 4 5
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">sort</span><span class="hl std">(x,</span> <span class="hl kwc">decreasing</span><span class="hl std">=T)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] 5 4 3 2 1
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">###############</span>
+<span class="hl com">#             #</span>
+<span class="hl com"># Exercise 2  #</span>
+<span class="hl com">#             #</span>
+<span class="hl com">###############</span>
+
+<span class="hl std">x</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">matrix</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">100</span><span class="hl std">,</span> <span class="hl kwc">ncol</span><span class="hl std">=</span><span class="hl num">10</span><span class="hl std">)</span>
+<span class="hl std">x1</span> <span class="hl kwb">&lt;-</span> <span class="hl std">x[</span><span class="hl kwd">order</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl std">x[,</span><span class="hl num">2</span><span class="hl std">]), ]</span>
+<span class="hl std">x2</span> <span class="hl kwb">&lt;-</span> <span class="hl std">x[,</span> <span class="hl kwd">order</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl std">x[</span><span class="hl num">2</span><span class="hl std">, ])]</span>
+
+<span class="hl com">###############</span>
+<span class="hl com">#             #</span>
+<span class="hl com"># Exercise 3  #</span>
+<span class="hl com">#             #</span>
+<span class="hl com">###############</span>
+
+<span class="hl std">x[,</span> <span class="hl num">1</span><span class="hl std">]</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">sort</span><span class="hl std">(x[,</span> <span class="hl num">1</span><span class="hl std">])</span>
+
+<span class="hl com">###############</span>
+<span class="hl com">#             #</span>
+<span class="hl com"># Exercise 4  #</span>
+<span class="hl com">#             #</span>
+<span class="hl com">###############</span>
+
+<span class="hl kwd">is.unsorted</span><span class="hl std">(women</span><span class="hl opt">$</span><span class="hl std">height)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] FALSE
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">is.unsorted</span><span class="hl std">(women</span><span class="hl opt">$</span><span class="hl std">weight)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] FALSE
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">women</span><span class="hl opt">$</span><span class="hl std">bmi</span> <span class="hl kwb">&lt;-</span> <span class="hl std">women</span><span class="hl opt">$</span><span class="hl std">weight</span>  <span class="hl opt">/</span> <span class="hl std">women</span><span class="hl opt">$</span><span class="hl std">height</span><span class="hl opt">^</span><span class="hl num">2</span> <span class="hl opt">*</span> <span class="hl num">703</span>
+<span class="hl kwd">is.unsorted</span><span class="hl std">(women</span><span class="hl opt">$</span><span class="hl std">bmi)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] TRUE
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl std">women</span> <span class="hl kwb">&lt;-</span> <span class="hl std">women[</span><span class="hl kwd">order</span><span class="hl std">(women</span><span class="hl opt">$</span><span class="hl std">bmi),</span> <span class="hl kwd">sort</span><span class="hl std">(</span><span class="hl kwd">names</span><span class="hl std">(women))]</span>
+
+<span class="hl com">###############</span>
+<span class="hl com">#             #</span>
+<span class="hl com"># Exercise 5  #</span>
+<span class="hl com">#             #</span>
+<span class="hl com">###############</span>
+
+<span class="hl std">CO2</span> <span class="hl kwb">&lt;-</span> <span class="hl std">CO2[</span><span class="hl kwd">order</span><span class="hl std">(</span><span class="hl kwd">as.character</span><span class="hl std">(CO2</span><span class="hl opt">$</span><span class="hl std">Plant)), ]</span>
+<span class="hl std">CO2</span> <span class="hl kwb">&lt;-</span> <span class="hl std">CO2[</span><span class="hl kwd">order</span><span class="hl std">(CO2</span><span class="hl opt">$</span><span class="hl std">uptake,</span> <span class="hl kwd">as.character</span><span class="hl std">(CO2</span><span class="hl opt">$</span><span class="hl std">Plant)), ]</span>
+<span class="hl std">CO2</span> <span class="hl kwb">&lt;-</span> <span class="hl std">CO2[</span><span class="hl kwd">order</span><span class="hl std">(CO2</span><span class="hl opt">$</span><span class="hl std">uptake,</span> <span class="hl opt">-</span><span class="hl kwd">xtfrm</span><span class="hl std">(</span><span class="hl kwd">as.character</span><span class="hl std">(CO2</span><span class="hl opt">$</span><span class="hl std">Plant))), ]</span>
+
+<span class="hl com">###############</span>
+<span class="hl com">#             #</span>
+<span class="hl com"># Exercise 6  #</span>
+<span class="hl com">#             #</span>
+<span class="hl com">###############</span>
+
+<span class="hl std">df</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">as.data.frame</span><span class="hl std">(</span><span class="hl kwd">matrix</span><span class="hl std">(</span><span class="hl kwd">sample</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl num">2000</span><span class="hl std">, T),</span> <span class="hl kwc">ncol</span><span class="hl std">=</span><span class="hl num">40</span><span class="hl std">))</span>
+<span class="hl std">df</span> <span class="hl kwb">&lt;-</span> <span class="hl std">df[</span><span class="hl kwd">do.call</span><span class="hl std">(order, df), ]</span>
+<span class="hl std">df</span> <span class="hl kwb">&lt;-</span> <span class="hl std">df[</span><span class="hl kwd">do.call</span><span class="hl std">(order,</span> <span class="hl opt">-</span><span class="hl std">df), ]</span>
+<span class="hl std">df</span> <span class="hl kwb">&lt;-</span> <span class="hl std">df[</span><span class="hl kwd">do.call</span><span class="hl std">(order,</span> <span class="hl kwd">rev</span><span class="hl std">(df)), ]</span>
+</pre></div>
+</div></div>
