@@ -2,7 +2,9 @@
 title: "P3 Solutions to exercises with raster data (parts 1-2)"
 author: "João Gonçalves"
 date: "28 de Novembro de 2017"
-output: html_document
+output: 
+  html_document: 
+    self_contained: no
 ---
 
 ```{r setup, include=FALSE}
@@ -122,7 +124,7 @@ cellStats(rst, stat = function(x, ...) quantile(x, probs = c(0.01, 0.25, 0.5, 0.
 
 ```
 
-```{r P3_solution_ex6 eval=FALSE, echo=TRUE}
+```{r P3_solution_ex6, eval=FALSE, echo=TRUE}
 
 ####################
 #                  #

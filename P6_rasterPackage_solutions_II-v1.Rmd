@@ -2,7 +2,9 @@
 title: "P6 Solutions to exercises with raster data (parts 3-4)"
 author: "João Gonçalves"
 date: "28 de Novembro de 2017"
-output: html_document
+output: 
+  html_document:
+    self_contained: no
 ---
 
 ```{r setup, include=FALSE}
@@ -16,7 +18,7 @@ knitr::opts_chunk$set(fig.width = 5, fig.height = 4.5, dpi = 80)
 Below are the solutions to [these](http://r-exercises.com/2018/02/07/exercises-with-raster-data-parts-3-4/) exercises on raster data (parts 3-4).
 
 
-```{r}
+```{r P6_solution_ex1, message=FALSE, warning=FALSE}
 
 ####################
 #                  #
@@ -24,7 +26,230 @@ Below are the solutions to [these](http://r-exercises.com/2018/02/07/exercises-w
 #                  #
 ####################
 
+library(raster)
 
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists("./data-raw")) dir.create("./data-raw")
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip", "./data-raw/srtm_pnpg.zip", method = "auto")
+
+# Unzip the data to the target folder
+unzip("./data-raw/srtm_pnpg.zip", exdir = "./data-raw")
+
+# Load data into R
+rst <- raster("./data-raw/srtm_pnpg.tif")
+
+# Create the extent object
+extMask <- extent(c(xmin = 560640, xmax = 577390, 
+                    ymin = 4629790, ymax = 4646770))
+
+# Mask the values to the extent
+# Notice that the extent object is converted to SpatialPolygons 
+# to be used in mask function
+rstMasked <- mask(rst, as(extMask,"SpatialPolygons"))
+
+```
+
+```{r P6_solution_ex2}
+
+####################
+#                  #
+#    Exercise 2    #
+#                  #
+####################
+
+
+ # Perform aggregation to multiple factors
+rst2 <- aggregate(rst, fact = 2)  
+
+rst5 <- aggregate(rst, fact = 5)   
+
+rst10 <- aggregate(rst, fact = 10)  
+
+```
+
+```{r P6_solution_ex3}
+
+####################
+#                  #
+#    Exercise 3    #
+#                  #
+####################
+
+# Cut data by quantiles
+rstReclassQuantiles <- cut(rst, breaks = quantile(values(rst)))
+
+```
+
+```{r P6_solution_ex4}
+
+####################
+#                  #
+#    Exercise 4    #
+#                  #
+####################
+
+# Do k-means to elevation data
+rstValues <- data.frame(elev = values(rst))
+
+km <- kmeans(rstValues, centers = 5, iter.max = 50)
+
+rstKM5 <- rst
+values(rstKM5) <- km$cluster
+
+```
+
+```{r P6_solution_ex5}
+
+####################
+#                  #
+#    Exercise 5    #
+#                  #
+####################
+
+# Calculate slope
+rstSlope <- terrain(rst, opt = "slope", unit = "degrees", neighbors = 8)
+
+cellStats(rstSlope, stat = function(x,...) quantile(x,probs=c(0.05,0.5,0.95),...))
+
+```
+
+```{r P6_solution_ex6}
+
+####################
+#                  #
+#    Exercise 6    #
+#                  #
+####################
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CIVPARISH_PNPG.zip", "./data-raw/CIVPARISH_PNPG.zip", method = "auto")
+
+unzip("./data-raw/CIVPARISH_PNPG.zip", exdir = "./data-raw")
+rstCivPar <- raster("./data-raw/PNPG_CivilParishes.tif")
+
+# Calculate zonal stats for elevation
+zonElev <- zonal(rst, rstCivPar, fun=mean)
+
+# Calculate zonal stats for slope
+zonSlope <- zonal(rstSlope, rstCivPar, fun=mean)
+
+# Zone with average highest elevation
+zonElev[which.max(zonElev[,2]), ]
+
+# Zone with highest average topographic roughness/heterogeneity
+zonSlope[which.max(zonSlope[,2]), ]
+
+```
+
+```{r P6_solution_ex7}
+
+####################
+#                  #
+#    Exercise 7    #
+#                  #
+####################
+
+set.seed(12345)
+
+# Generate random points with uniform distribution bounded by the raster extent
+xyRandPoints <- data.frame(x = runif(50, xmin(rst), xmax(rst)), 
+                           y = runif(50, ymin(rst), ymax(rst)))
+
+# Convert the initial data frame into a SpatialPoints objects for clarity
+xyRandPoints <- SpatialPoints(xyRandPoints, proj4string = crs(rst))
+
+# Calculate the distance to points raster dataset
+distPoints <- distanceFromPoints(rst, xyRandPoints)
+
+# Calculate the mean
+cellStats(distPoints, stat = mean)
+
+```
+
+```{r P6_solution_ex8-data-load, echo=TRUE, eval=FALSE}
+
+####################
+#                  #
+#    Exercise 8    #
+#                  #
+####################
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists("./data-raw")) dir.create("./data-raw")
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/MODIS_EVI_TS_PGNP_MultiBand.zip", "./data-raw/MODIS_EVI_TS_PGNP_MultiBand.zip", method = "auto")
+
+## Uncompress the zip file
+unzip("./data-raw/MODIS_EVI_TS_PGNP_MultiBand.zip", exdir = "./data-raw")
+
+```
+
+
+```{r P6_solution_ex8, fig.width=6, eval = FALSE, echo = TRUE}
+
+
+# Load the raster data into a RasterBrick object
+rst <- brick("./data-raw/MOD13Q1.2012_2016.PGNP_250m_EVI_16days.tif")
+
+
+sgSmooth <- function(x, filtLen=21, ...) pracma::savgol(x, fl=filtLen, ...)
+
+# Do Savitzy-Golay smoothing
+rst_SGsmooth <- calc(rst, fun = sgSmooth)
+
+# Extract data to test point
+xyPt <- data.frame(x = 570760, y = 4628265)
+eviTS1 <- extract(rst, xyPt)
+eviTS2 <- extract(rst_SGsmooth, xyPt)
+
+# Make plot comparing the original and smoothed EVI series
+plot(1:115, eviTS1[1,], type = "l", lwd = 2, col="light grey", 
+     main = "EVI time-series 2012-2016", xlab="Obs #index", ylab="EVI")
+points(1:115, eviTS1[1,], col="dark grey")
+lines(1:115, eviTS2[1,], col = "red", lwd = 2)
+legend("topright",legend = c("Original","Smooth"),lwd=2,col = c("light grey","red"))
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P6_solution_ex8-1.png)
+
+
+```{r P6_solution_ex9, eval = FALSE, echo = TRUE}
+
+####################
+#                  #
+#    Exercise 9    #
+#                  #
+####################
+
+# Calculate the yearly mean with stack apply
+# Recall that each year has 23 observations
+rstYrMean <- stackApply(rst, fun=mean, indices = rep(1:5,each=23))
+
+```
+
+```{r P6_solution_ex10, eval = FALSE, echo = TRUE}
+
+####################
+#                  #
+#    Exercise 10   #
+#                  #
+####################
+
+# Calculate the yearly mean with stack apply for the smoothed series
+rstSGsmoothYrMean <- stackApply(rst_SGsmooth, fun=mean, indices = rep(1:5,each=23))
+
+# Calculate squared differences
+sqDiffs <- (rstYrMean - rstSGsmoothYrMean)^2
+
+# Calculate the root mean of the squared differences
+rstRMSE <- sqrt(calc(sqDiffs, fun = mean))
+
+# Calculate the quantiles
+cellStats(rstRMSE, quantile)
 
 ```
 

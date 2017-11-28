@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="João Gonçalves" />
+
+
+<title>P6 Exercises with raster data (parts 3-4)</title>
+
+<script src="P6_rasterPackage_exercises_II-v1_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="P6_rasterPackage_exercises_II-v1_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="P6_rasterPackage_exercises_II-v1_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="P6_rasterPackage_exercises_II-v1_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="P6_rasterPackage_exercises_II-v1_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="P6_rasterPackage_exercises_II-v1_files/navigation-1.1/tabsets.js"></script>
+<link href="P6_rasterPackage_exercises_II-v1_files/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="P6_rasterPackage_exercises_II-v1_files/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">P6 Exercises with raster data (parts 3-4)</h1>
+<h4 class="author"><em>João Gonçalves</em></h4>
+<h4 class="date"><em>28 de Novembro de 2017</em></h4>
+
+</div>
+
+
+<p>Geospatial data is becoming increasingly used to solve numerous ‘real-life’ problems (check out some examples <a href="http://gisgeography.com/gis-applications-uses/">here</a>. In turn, R is becoming a powerful open-source solution to handle this type of data, currently providing an exceptional range of functions and tools for GIS and Remote Sensing data analysis.</p>
+<p>In particular, <strong>raster data</strong> provides support for representing spatial phenomena by diving the surface into a grid (or matrix) composed by cells of regular size. Each raster dataset has a certain number of columns and rows and each cell contains a value with information for the variable of interest. Stored data can be either: (i) thematic - representing a <strong>discrete</strong> variable (e.g., land cover classification map) or <strong>continuous</strong> (e.g., elevation).</p>
+<p>The <code>raster</code> package currently provides an extensive set of functions to create, read, export, manipulate and process raster datasets. It also provides low-level functionalities for creating more advanced processing chains as well as the ability to manage large datasets. For more information see: <code>vignette(&quot;functions&quot;, package = &quot;raster&quot;)</code>. You can also check more about raster data on the tutorial series about this topic <a href="http://r-exercises.com/tags/raster-data">here</a>.</p>
+<p>In this exercise set we will explore the following topics in raster data processing and analysis:</p>
+<ul>
+<li>Masking,<br />
+</li>
+<li>Aggregation,</li>
+<li>Reclassification</li>
+<li>Zonal analysis,</li>
+<li>Time-series processing</li>
+</ul>
+<p>Answers to the exercises are available <a href="http://r-exercises.com/2018/02/07/solutions-to-exercises-with-raster-data-parts-3-4/">here</a>.</p>
+<p><strong>Exercise 1</strong> Use the data in this <a href="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip">link</a> (elevation data for Peneda-geres National Park - PGNP, NW Portugal) to perform the next exercises (1 - 7). Make an extent object with the following bounding coordinates: xmin = 560640, xmax = 577390, ymin = 4629790, ymax = 4646770. Use that object to mask values.</p>
+<p><strong>Exercise 2</strong> Perform a raster aggregation with factors: 2, 5, and, 10.</p>
+<p><strong>Exercise 3</strong> Reclassify the sample raster dataset into its distribution quartiles.</p>
+<p><strong>Exercise 4</strong> Use k-means to partition the data into 5 classes.</p>
+<p><strong>Exercise 5</strong> Calculate the slope in degrees and 8-neighbor rule. Using the obtained slope data, calculate the 5%, 50% and 95% quantiles.</p>
+<p><strong>Exercise 6</strong> Use elevation and slope from previous exercises and also the categorical raster in this <a href="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CIVPARISH_PNPG.zip">link</a> (civil parishes, in Peneda-Geres National Park, NW Portugal) to calculate zonal statistics (use function <code>zonal</code>). Which zone has got the higher mean elevation? Which one has got the higher heterogeneity / roughness?</p>
+<p><strong>Exercise 7</strong> Calculate the Euclidean distance to a set of 50 randomly generated points (use <code>set.seed(12345)</code>). What is the mean cell distance?</p>
+<p><strong>Exercise 8</strong> Use the multi-layer GeoTIFF file in this <a href="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/MODIS_EVI_TS_PGNP_MultiBand.zip">link</a> (containing an 16-day, 250m EVI time-series for 5 years, 2012-2016 with 23 images per year for PGNP) to answer the next questions. Load this file has a <code>RasterBrick</code>. Using <code>calc</code> and the Savitzy-Golay in <code>savgol</code> function (from package <code>pracma</code>) apply this smoothing algorithm to the data. In <code>savgol</code> use parameter <code>fl = 21</code>. Use the point {x = 570760, y = 4628265} to make a plot and check the results.</p>
+<p><strong>Exercise 9</strong> Using the original series, calculate the yearly mean using <code>stackAppply</code> (save values to a <code>Raster*</code> object).</p>
+<p><strong>Exercise 10</strong> Using the Savitzky-Golay smoothed time-series, calculate also the yearly mean using <code>stackAppply</code>. Compare the two annual series using the Root-mean-square error (RMSE), and, get the distribution quartiles of this measure.</p>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

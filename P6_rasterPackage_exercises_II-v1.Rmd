@@ -2,7 +2,9 @@
 title: "P6 Exercises with raster data (parts 3-4)"
 author: "João Gonçalves"
 date: "28 de Novembro de 2017"
-output: html_document
+output: 
+  html_document:
+    self_contained: no
 ---
 
 ```{r setup, include=FALSE}
@@ -28,48 +30,62 @@ __discrete__ variable (e.g., land cover classification map) or __continuous__ (e
 The `raster` package currently provides an extensive set of functions to create, read, export, 
 manipulate and process raster datasets. It also provides low-level functionalities for creating 
 more advanced processing chains as well as the ability to manage large datasets. For more 
-information see: `vignette("functions", package = "raster")`.
+information see: `vignette("functions", package = "raster")`. You can also check more about raster 
+data on the tutorial series about this topic [here](http://r-exercises.com/tags/raster-data).
 
-In this exercise set we will explore:     
+In this exercise set we will explore the following topics in raster data processing and analysis:      
 
    - Masking,    
    - Aggregation,
+   - Reclassification
    - Zonal analysis,
-   - Cross-tabulation
-   - Time-series
+   - Time-series processing
 
-Answers to the exercises are available [here](http://r-exercises.com/2017/12/27/solutions-to-exercises-with-raster-data-parts-3-4/).
-
-You can also check more about raster data on the tutorial series about this topic [here](http://r-exercises.com/tags/raster-data).
+Answers to the exercises are available [here](http://r-exercises.com/2018/02/07/solutions-to-exercises-with-raster-data-parts-3-4/).
 
 
 
 __Exercise 1__
-
+Use the data in this [link](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip) (elevation data for Peneda-geres National Park - PGNP, NW Portugal) 
+to perform the next exercises (1 - 7). Make an extent object with the following bounding 
+coordinates: xmin = 560640, xmax = 577390, ymin = 4629790, ymax = 4646770. Use that object 
+to mask values.
 
 __Exercise 2__
-
+Perform a raster aggregation with factors: 2, 5, and, 10.
 
 __Exercise 3__
-
+Reclassify the sample raster dataset into its distribution quartiles.
 
 __Exercise 4__
-
+Use k-means to partition the data into 5 classes.
 
 __Exercise 5__
-
+Calculate the slope in degrees and 8-neighbor rule. Using the obtained slope data, calculate 
+the 5%, 50% and 95% quantiles.
 
 __Exercise 6__
-
+Use elevation and slope from previous exercises and also the categorical raster in this [link](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CIVPARISH_PNPG.zip) (civil parishes, in Peneda-Geres National Park, NW Portugal) to calculate zonal statistics (use function `zonal`). 
+Which zone has got the higher mean elevation? Which one has got the higher heterogeneity / roughness?
 
 __Exercise 7__
-
+Calculate the Euclidean distance to a set of 50 randomly generated points (use `set.seed(12345)`). 
+What is the mean cell distance?
 
 __Exercise 8__
-
+Use the multi-layer GeoTIFF file in this [link](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/MODIS_EVI_TS_PGNP_MultiBand.zip) (containing an 16-day, 250m EVI time-series for 5 years, 2012-2016 with 23 images per year for 
+PGNP) to answer the next questions. Load this file has a `RasterBrick`. Using `calc` and the Savitzy-Golay in `savgol` 
+function (from package `pracma`) apply this smoothing algorithm to the data. In `savgol` use parameter `fl = 21`. 
+Use the point {x = 570760, y = 4628265} to make a plot and check the results.
 
 __Exercise 9__
-
+Using the original series, calculate the yearly mean using `stackAppply` (save values 
+to a `Raster*` object).
 
 __Exercise 10__
+Using the Savitzky-Golay smoothed time-series, calculate also the yearly mean using 
+`stackAppply`. Compare the two annual series using the Root-mean-square error (RMSE), and, 
+get the distribution quartiles of this measure. 
+
+
 
