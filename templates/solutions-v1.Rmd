@@ -1,0 +1,119 @@
+---
+title: "P3 Solutions to exercises with raster data (parts 1-2)"
+author: "João Gonçalves"
+date: "28 de Novembro de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.path = "img/")
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4.5, dpi = 80)
+
+```
+
+Below are the solutions to [these](http://r-exercises.com/2017/12/27/exercises-with-raster-data-parts-1-2/) 
+exercises on raster data analysis (parts 1-2).     
+         
+
+```{r P3_solution_ex1}
+
+####################
+#                  #
+#    Exercise 1    #
+#                  #
+####################
+
+```
+
+```{r P3_solution_ex2}
+
+####################
+#                  #
+#    Exercise 2    #
+#                  #
+####################
+
+```
+
+```{r P3_solution_ex3}
+
+####################
+#                  #
+#    Exercise 3    #
+#                  #
+####################
+
+```
+
+```{r P3_solution_ex4}
+
+####################
+#                  #
+#    Exercise 4    #
+#                  #
+####################
+
+```
+
+```{r P3_solution_ex5}
+
+####################
+#                  #
+#    Exercise 5    #
+#                  #
+####################
+
+```
+
+```{r P3_solution_ex6}
+
+####################
+#                  #
+#    Exercise 6    #
+#                  #
+####################
+
+```
+
+```{r P3_solution_ex7}
+
+####################
+#                  #
+#    Exercise 7    #
+#                  #
+####################
+
+```
+
+```{r P3_solution_ex8}
+
+####################
+#                  #
+#    Exercise 8    #
+#                  #
+####################
+
+```
+
+```{r P3_solution_ex9}
+
+####################
+#                  #
+#    Exercise 9    #
+#                  #
+####################
+
+```
+
+```{r P3_solution_ex10}
+
+####################
+#                  #
+#    Exercise 10   #
+#                  #
+####################
+
+```
+

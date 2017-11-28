@@ -1,0 +1,30 @@
+---
+title: "P6 Solutions to exercises with raster data (parts 3-4)"
+author: "João Gonçalves"
+date: "28 de Novembro de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.path = "img/")
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4.5, dpi = 80)
+
+```
+
+Below are the solutions to [these](http://r-exercises.com/2018/02/07/exercises-with-raster-data-parts-3-4/) exercises on raster data (parts 3-4).
+
+
+```{r}
+
+####################
+#                  #
+#    Exercise 1    #
+#                  #
+####################
+
+
+
+```
+

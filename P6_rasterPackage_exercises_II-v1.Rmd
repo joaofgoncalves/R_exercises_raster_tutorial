@@ -1,0 +1,75 @@
+---
+title: "P6 Exercises with raster data (parts 3-4)"
+author: "João Gonçalves"
+date: "28 de Novembro de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.path = "img/")
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4.5, dpi = 80)
+
+```
+
+
+Geospatial data is becoming increasingly used to solve numerous 'real-life' problems (check 
+out some examples [here](http://gisgeography.com/gis-applications-uses/). In turn, 
+R is becoming a powerful open-source solution to handle this type of data, currently providing 
+an exceptional range of functions and tools for GIS and Remote Sensing data analysis.
+
+In particular, __raster data__ provides support for representing spatial phenomena 
+by diving the surface into a grid (or matrix) composed by cells of regular size. Each raster 
+dataset has a certain number of columns and rows and each cell contains a value with information 
+for the variable of interest. Stored data can be either: (i) thematic - representing a 
+__discrete__ variable (e.g., land cover classification map) or __continuous__ (e.g., elevation).
+
+The `raster` package currently provides an extensive set of functions to create, read, export, 
+manipulate and process raster datasets. It also provides low-level functionalities for creating 
+more advanced processing chains as well as the ability to manage large datasets. For more 
+information see: `vignette("functions", package = "raster")`.
+
+In this exercise set we will explore:     
+
+   - Masking,    
+   - Aggregation,
+   - Zonal analysis,
+   - Cross-tabulation
+   - Time-series
+
+Answers to the exercises are available [here](http://r-exercises.com/2017/12/27/solutions-to-exercises-with-raster-data-parts-3-4/).
+
+You can also check more about raster data on the tutorial series about this topic [here](http://r-exercises.com/tags/raster-data).
+
+
+
+__Exercise 1__
+
+
+__Exercise 2__
+
+
+__Exercise 3__
+
+
+__Exercise 4__
+
+
+__Exercise 5__
+
+
+__Exercise 6__
+
+
+__Exercise 7__
+
+
+__Exercise 8__
+
+
+__Exercise 9__
+
+
+__Exercise 10__
+

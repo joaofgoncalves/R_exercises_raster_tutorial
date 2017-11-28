@@ -1,0 +1,83 @@
+---
+title: "P3 Exercises with raster data (parts 1-2)"
+author: "João Gonçalves"
+date: "28 de Novembro de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.path = "img/")
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4.5, dpi = 80)
+
+```
+
+Geospatial data is becoming increasingly used to solve numerous 'real-life' problems (check 
+out some examples [here](http://gisgeography.com/gis-applications-uses/"). In turn, 
+R is becoming a powerful open-source solution to handle this type of data, currently providing 
+an exceptional range of functions and tools for GIS and Remote Sensing data analysis.       
+
+In particular, __raster data__ provides support for representing spatial phenomena 
+by diving the surface into a grid (or matrix) composed by cells of regular size. Each raster 
+dataset has a certain number of columns and rows and each cell contains a value with information 
+for the variable of interest. Stored data can be either: (i) thematic - representing a 
+__discrete__ variable (e.g., land cover classification map) or __continuous__ (e.g., elevation).     
+
+The `raster` package currently provides an extensive set of functions to create, read, export, 
+manipulate and process raster datasets. It also provides low-level functionalities for creating 
+more advanced processing chains as well as the ability to manage large datasets. For more 
+information see: `vignette("functions", package = "raster")`.      
+
+Answers to the exercises are available [here](http://r-exercises.com/2017/12/27/solutions-to-exercises-with-raster-data-parts-1-2/).    
+
+You can also check more about raster data on the tutorial series about this topic [here](http://r-exercises.com/tags/raster-data).    
+
+Start by downloading, uncompressing and loading the sample data for these exercises from this 
+[link](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/srtm_pnpg.zip) 
+(digital elevation model data from SRTM-v4.1 for the Peneda-Geres National Park, Portugal). The data is in GeoTIFF 
+format with name srtm_pnpg.tif.
+
+
+__Exercise 1__        
+Check out the size of the data in terms of number of rows, columns, cells and layers.          
+
+
+__Exercise 2__         
+Check the spatial resolution of the raster and its coordinate reference system (CRS).        
+
+
+__Exercise 3__      
+Get the raster extent object and calculate the 'height' (in the y-axis) and the length (in x-axis) of the raster.       
+
+
+__Exercise 4__      
+Calculate the mean and standard-deviation for all pixels.       
+
+
+__Exercise 5__     
+Calculate the 1%, 25%, 50%, 75% and 99% quantiles for all pixels.      
+
+
+__Exercise 6__      
+Using a QQ-plot investigate deviations from normality in the distribution of elevation values.        
+
+
+__Exercise 7__      
+Extract raster values for 100 randomly generated points within the image (use `set.seed(12345)`)        
+for obtaining the same values as in the solutions).     
+
+
+__Exercise 8__      
+Convert the elevation units of the DEM from meters to feet. Make a RasterStack object with both the raster 
+with meters (original) and feet (new).     
+
+
+__Exercise 9__     
+Crop the raster to the following extent: Upper-left {ymax = 4654705, xmin = 554615}, and, 
+Lower-right {ymin = 4618355, xmax = 589015}.           
+
+
+__Exercise 10__       
+Reproject the sample raster to Datum ETRS 1989 (European Terrestrial Reference System 1989), projection Lambert 
+Azimuthal Equal Area (LAEA) and change the resolution to 100m with bilinear method.           
