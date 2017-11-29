@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="João Gonçalves" />
+
+
+<title>P8 Advanced techniques with raster data (part-2) - Supervised Classification</title>
+
+<script src="P8_rasterPackageAdvanced_II-v1_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="P8_rasterPackageAdvanced_II-v1_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="P8_rasterPackageAdvanced_II-v1_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="P8_rasterPackageAdvanced_II-v1_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="P8_rasterPackageAdvanced_II-v1_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="P8_rasterPackageAdvanced_II-v1_files/navigation-1.1/tabsets.js"></script>
+<link href="P8_rasterPackageAdvanced_II-v1_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="P8_rasterPackageAdvanced_II-v1_files/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">P8 Advanced techniques with raster data (part-2) - Supervised Classification</h1>
+<h4 class="author"><em>João Gonçalves</em></h4>
+<h4 class="date"><em>28 de Novembro de 2017</em></h4>
+
+</div>
+
+
+<pre class="r"><code>## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists(&quot;./data-raw&quot;)) dir.create(&quot;./data-raw&quot;)
+
+## If you run into download problems try changing: method = &quot;wget&quot;
+download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/berlin.zip&quot;, &quot;./data-raw/berlin.zip&quot;, method = &quot;auto&quot;)
+
+## Uncompress the zip file
+unzip(&quot;./data-raw/berlin.zip&quot;, exdir = &quot;./data-raw&quot;)</code></pre>
+<pre class="r"><code>library(raster)
+library(randomForest)</code></pre>
+<pre class="r"><code>fl &lt;- list.files(&quot;./data-raw/berlin/S2&quot;, pattern = &quot;.tif$&quot;, full.names = TRUE)
+
+rst &lt;- stack(fl)
+names(rst) &lt;- c(paste(&quot;b&quot;,2:8,sep=&quot;&quot;),&quot;b8a&quot;,&quot;b11&quot;,&quot;b12&quot;)</code></pre>
+<pre class="r"><code>plotRGB(rst, r=3, g=2, b=1, scale=100000, stretch=&quot;lin&quot;, main=&quot;RGB composite (b8,b3,b2) of Sentinel-2&quot;)</code></pre>
+<p><img src="img/P8_plot_rgb_S2-1.png" width="400" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_rgb_S2-1.png" />
+
+</div>
+<pre class="r"><code>rstTrain &lt;- raster(&quot;./data-raw/berlin/train/berlin_lcz_GT.tif&quot;)
+rstTrain[rstTrain==0] &lt;- NA
+rstTrain &lt;- ratify(rstTrain)
+names(rstTrain) &lt;- &quot;trainClass&quot;
+
+rstDF &lt;- na.omit(values(stack(rstTrain, rst)))
+rstDF[,&quot;trainClass&quot;] &lt;- as.factor(as.character(rstDF[,&quot;trainClass&quot;]))</code></pre>
+<pre class="r"><code>nEvalRounds &lt;- 20
+pTrain &lt;- 0.5
+n &lt;- nrow(rstDF)
+nClasses &lt;- length(unique(rstDF[,&quot;trainClass&quot;]))</code></pre>
+<pre class="r"><code># Initialize objects
+
+confMats &lt;- array(NA, dim = c(nClasses,nClasses,nEvalRounds))
+
+evalMatrix&lt;-matrix(NA, nrow=nEvalRounds, ncol=3, 
+                   dimnames=list(paste(&quot;R_&quot;,1:nEvalRounds,sep=&quot;&quot;), 
+                                 c(&quot;Accuracy&quot;,&quot;Kappa&quot;,&quot;PSS&quot;)))
+
+pb &lt;- txtProgressBar(1, nEvalRounds, style = 3)</code></pre>
+<pre class="r"><code># Run the classifier
+
+for(i in 1:nEvalRounds){
+  
+  # Create the random index for row selection at each round
+  sampIdx &lt;- sample(1:n, size = round(n*pTrain))
+
+  # Calibrate the RF classifier
+  rf &lt;- randomForest(y = rstDF[sampIdx, &quot;trainClass&quot;], 
+                     x = rstDF[sampIdx, -1], 
+                     ntree = 200)
+
+  # Predict the class to the test set
+  testSetPred &lt;- predict(rf, newdata = rstDF[-sampIdx,], type = &quot;response&quot;)
+
+  # Get the observed class vector
+  testSetObs &lt;- rstDF[-sampIdx,&quot;trainClass&quot;]
+  
+  # Evaluate 
+  evalData &lt;- Evaluate(testSetObs, testSetPred)
+  
+  evalMatrix[i,] &lt;- c(evalData$Metrics[&quot;Accuracy&quot;,1],
+                      evalData$Metrics[&quot;Kappa&quot;,1],
+                      evalData$Metrics[&quot;PSS&quot;,1])
+  
+  confMats[,,i] &lt;- evalData$ConfusionMatrix
+  
+  rstPredClassTMP &lt;- predict(rst, model = rf, 
+                             factors = levels(rstDF[,&quot;trainClass&quot;]))
+  
+  if(i==1){
+    # Initiate the predicted raster
+    rstPredClass &lt;- rstPredClassTMP
+    
+    # Get precision and recall for each class
+    Precision &lt;- evalData$Metrics[&quot;Precision&quot;,,drop=FALSE]
+    Recall &lt;- evalData$Metrics[&quot;Recall&quot;,,drop=FALSE]
+    
+  }else{
+    # Stack the predicted rasters
+    rstPredClass &lt;- stack(rstPredClass, rstPredClassTMP)
+    
+    # Get precision and recall for each class
+    Precision &lt;- rbind(Precision,evalData$Metrics[&quot;Precision&quot;,,drop=FALSE])
+    Recall &lt;- rbind(Recall,evalData$Metrics[&quot;Recall&quot;,,drop=FALSE])
+  }
+  
+  setTxtProgressBar(pb,i)
+  
+}
+
+# save.image(file = &quot;./data-raw/P8-session.RData&quot;)</code></pre>
+<pre class="r"><code>knitr::kable(evalMatrix, digits = 3)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th align="right">Accuracy</th>
+<th align="right">Kappa</th>
+<th align="right">PSS</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>R_1</td>
+<td align="right">0.788</td>
+<td align="right">0.755</td>
+<td align="right">0.749</td>
+</tr>
+<tr class="even">
+<td>R_2</td>
+<td align="right">0.789</td>
+<td align="right">0.756</td>
+<td align="right">0.751</td>
+</tr>
+<tr class="odd">
+<td>R_3</td>
+<td align="right">0.782</td>
+<td align="right">0.748</td>
+<td align="right">0.741</td>
+</tr>
+<tr class="even">
+<td>R_4</td>
+<td align="right">0.795</td>
+<td align="right">0.763</td>
+<td align="right">0.757</td>
+</tr>
+<tr class="odd">
+<td>R_5</td>
+<td align="right">0.789</td>
+<td align="right">0.755</td>
+<td align="right">0.749</td>
+</tr>
+<tr class="even">
+<td>R_6</td>
+<td align="right">0.789</td>
+<td align="right">0.755</td>
+<td align="right">0.750</td>
+</tr>
+<tr class="odd">
+<td>R_7</td>
+<td align="right">0.784</td>
+<td align="right">0.751</td>
+<td align="right">0.744</td>
+</tr>
+<tr class="even">
+<td>R_8</td>
+<td align="right">0.785</td>
+<td align="right">0.751</td>
+<td align="right">0.745</td>
+</tr>
+<tr class="odd">
+<td>R_9</td>
+<td align="right">0.785</td>
+<td align="right">0.751</td>
+<td align="right">0.745</td>
+</tr>
+<tr class="even">
+<td>R_10</td>
+<td align="right">0.789</td>
+<td align="right">0.756</td>
+<td align="right">0.750</td>
+</tr>
+<tr class="odd">
+<td>R_11</td>
+<td align="right">0.785</td>
+<td align="right">0.752</td>
+<td align="right">0.746</td>
+</tr>
+<tr class="even">
+<td>R_12</td>
+<td align="right">0.786</td>
+<td align="right">0.752</td>
+<td align="right">0.746</td>
+</tr>
+<tr class="odd">
+<td>R_13</td>
+<td align="right">0.786</td>
+<td align="right">0.753</td>
+<td align="right">0.747</td>
+</tr>
+<tr class="even">
+<td>R_14</td>
+<td align="right">0.785</td>
+<td align="right">0.751</td>
+<td align="right">0.745</td>
+</tr>
+<tr class="odd">
+<td>R_15</td>
+<td align="right">0.794</td>
+<td align="right">0.762</td>
+<td align="right">0.756</td>
+</tr>
+<tr class="even">
+<td>R_16</td>
+<td align="right">0.785</td>
+<td align="right">0.752</td>
+<td align="right">0.745</td>
+</tr>
+<tr class="odd">
+<td>R_17</td>
+<td align="right">0.791</td>
+<td align="right">0.759</td>
+<td align="right">0.753</td>
+</tr>
+<tr class="even">
+<td>R_18</td>
+<td align="right">0.782</td>
+<td align="right">0.748</td>
+<td align="right">0.741</td>
+</tr>
+<tr class="odd">
+<td>R_19</td>
+<td align="right">0.781</td>
+<td align="right">0.746</td>
+<td align="right">0.739</td>
+</tr>
+<tr class="even">
+<td>R_20</td>
+<td align="right">0.785</td>
+<td align="right">0.751</td>
+<td align="right">0.744</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>avgPrecision &lt;- apply(Precision,2,mean)
+print(avgPrecision)</code></pre>
+<pre><code>##        11        12        13        14        16        17         2 
+## 0.9632428 0.7048153 0.7171620 0.9061842 0.7886166 0.9975525 0.6570942 
+##         4         5         6         8         9 
+## 0.3449612 0.5090742 0.6979711 0.6639569 0.4841384</code></pre>
+<pre class="r"><code>avgRecall &lt;- apply(Recall,2,mean)
+print(avgRecall)</code></pre>
+<pre><code>##         11         12         13         14         16         17 
+## 0.97912625 0.68455067 0.64847883 0.95967573 0.43395144 0.99965788 
+##          2          4          5          6          8          9 
+## 0.61060359 0.09335469 0.48139447 0.86941382 0.64690571 0.26760869</code></pre>
+<pre class="r"><code>avgF1 &lt;- (2 * avgPrecision * avgRecall) / (avgPrecision+avgRecall)
+print(avgF1)</code></pre>
+<pre><code>##        11        12        13        14        16        17         2 
+## 0.9711196 0.6945352 0.6810933 0.9321632 0.5598401 0.9986041 0.6329964 
+##         4         5         6         8         9 
+## 0.1469431 0.4948476 0.7743162 0.6553204 0.3446894</code></pre>
+<pre class="r"><code># Best round for Kappa
+evalMatrix[which.max(evalMatrix[,&quot;Kappa&quot;]), , drop=FALSE]</code></pre>
+<pre><code>##      Accuracy     Kappa       PSS
+## R_4 0.7946858 0.7626567 0.7569426</code></pre>
+<pre class="r"><code># Show confusion matrix for the best kappa
+cm &lt;- confMats[,,which.max(evalMatrix[,&quot;Kappa&quot;])]
+colnames(cm) &lt;- rownames(cm) &lt;- paste(&quot;c&quot;,levels(rstDF[,&quot;trainClass&quot;]),sep=&quot;_&quot;)
+
+knitr::kable(cm)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th align="right">c_11</th>
+<th align="right">c_12</th>
+<th align="right">c_13</th>
+<th align="right">c_14</th>
+<th align="right">c_16</th>
+<th align="right">c_17</th>
+<th align="right">c_2</th>
+<th align="right">c_4</th>
+<th align="right">c_5</th>
+<th align="right">c_6</th>
+<th align="right">c_8</th>
+<th align="right">c_9</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>c_11</td>
+<td align="right">2442</td>
+<td align="right">30</td>
+<td align="right">2</td>
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">8</td>
+<td align="right">0</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td>c_12</td>
+<td align="right">48</td>
+<td align="right">330</td>
+<td align="right">57</td>
+<td align="right">23</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">5</td>
+<td align="right">24</td>
+<td align="right">1</td>
+<td align="right">7</td>
+</tr>
+<tr class="odd">
+<td>c_13</td>
+<td align="right">7</td>
+<td align="right">43</td>
+<td align="right">358</td>
+<td align="right">97</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">2</td>
+<td align="right">6</td>
+<td align="right">4</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td>c_14</td>
+<td align="right">0</td>
+<td align="right">20</td>
+<td align="right">48</td>
+<td align="right">2096</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">11</td>
+<td align="right">0</td>
+<td align="right">5</td>
+</tr>
+<tr class="odd">
+<td>c_16</td>
+<td align="right">0</td>
+<td align="right">3</td>
+<td align="right">4</td>
+<td align="right">29</td>
+<td align="right">80</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">4</td>
+<td align="right">4</td>
+<td align="right">51</td>
+<td align="right">5</td>
+</tr>
+<tr class="even">
+<td>c_17</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">914</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td>c_2</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">4</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">507</td>
+<td align="right">6</td>
+<td align="right">199</td>
+<td align="right">23</td>
+<td align="right">73</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td>c_4</td>
+<td align="right">2</td>
+<td align="right">4</td>
+<td align="right">6</td>
+<td align="right">5</td>
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">2</td>
+<td align="right">31</td>
+<td align="right">114</td>
+<td align="right">105</td>
+<td align="right">16</td>
+<td align="right">9</td>
+</tr>
+<tr class="odd">
+<td>c_5</td>
+<td align="right">5</td>
+<td align="right">3</td>
+<td align="right">3</td>
+<td align="right">10</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">171</td>
+<td align="right">29</td>
+<td align="right">619</td>
+<td align="right">262</td>
+<td align="right">87</td>
+<td align="right">14</td>
+</tr>
+<tr class="even">
+<td>c_6</td>
+<td align="right">14</td>
+<td align="right">19</td>
+<td align="right">5</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">6</td>
+<td align="right">142</td>
+<td align="right">1753</td>
+<td align="right">13</td>
+<td align="right">38</td>
+</tr>
+<tr class="odd">
+<td>c_8</td>
+<td align="right">2</td>
+<td align="right">7</td>
+<td align="right">6</td>
+<td align="right">15</td>
+<td align="right">7</td>
+<td align="right">3</td>
+<td align="right">78</td>
+<td align="right">7</td>
+<td align="right">136</td>
+<td align="right">35</td>
+<td align="right">516</td>
+<td align="right">13</td>
+</tr>
+<tr class="even">
+<td>c_9</td>
+<td align="right">3</td>
+<td align="right">9</td>
+<td align="right">10</td>
+<td align="right">17</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">2</td>
+<td align="right">10</td>
+<td align="right">190</td>
+<td align="right">5</td>
+<td align="right">104</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>rstModalClass &lt;- modal(rstPredClass)
+
+rstModalClassFreq &lt;- modal(rstPredClass, freq=TRUE)
+
+medFreq &lt;- zonal(rstModalClassFreq, rstTrain, fun=median)</code></pre>
+<pre class="r"><code>medFreq[order(medFreq[,2],decreasing = TRUE),]</code></pre>
+<pre><code>##       zone value
+##  [1,]    6    20
+##  [2,]   11    20
+##  [3,]   12    20
+##  [4,]   14    20
+##  [5,]   17    20
+##  [6,]    2    19
+##  [7,]    8    19
+##  [8,]   13    19
+##  [9,]    5    15
+## [10,]   16    14
+## [11,]    9    13
+## [12,]    4    11</code></pre>
+<pre class="r"><code>par(mfrow=c(1,2), cex.main=0.8, cex.axis=0.8)
+
+plot(rstModalClass, main = &quot;RF modal land cover class&quot;)
+plot(rstModalClassFreq, main = &quot;Modal frequency&quot;)</code></pre>
+<p><img src="img/P8_plot_results-1.png" width="560" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_results-1.png" />
+
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

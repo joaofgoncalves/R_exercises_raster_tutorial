@@ -1,0 +1,18 @@
+Type,Code,Land cover class description
+Artificial,1,Compact high-rise
+Artificial,2,Compact midrise
+Artificial,3,Compact low-rise
+Artificial,4,Open high-rise
+Artificial,5,Open midrise
+Artificial,6,Open low-rise
+Artificial,7,Lightweight low-rise
+Artificial,8,Large low-rise
+Artificial,9,Sparsely built
+Artificial,10,Heavy industry
+Vegetated,11,Dense trees
+Vegetated,12,Scattered trees
+Vegetated,13,Bush and scrub
+Vegetated,14,Low plants
+Vegetated,15,Bare rock or paved
+Vegetated,16,Bare soil or sand
+Vegetated,17,Water

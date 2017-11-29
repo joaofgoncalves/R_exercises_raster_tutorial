@@ -1,0 +1,230 @@
+---
+title: "P8 Advanced techniques with raster data (part-2) - Supervised Classification"
+author: "João Gonçalves"
+date: "28 de Novembro de 2017"
+output: 
+  html_document:
+    self_contained: no
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.path = "img/")
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4.5, dpi = 80)
+
+```
+
+
+```{r P8_load_session_data, echo=FALSE}
+
+load("./data-raw/P8-session.RData")
+
+```
+
+```{r P8_download_sample_data_berlin, eval=FALSE}
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists("./data-raw")) dir.create("./data-raw")
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/berlin.zip", "./data-raw/berlin.zip", method = "auto")
+
+## Uncompress the zip file
+unzip("./data-raw/berlin.zip", exdir = "./data-raw")
+
+```
+
+```{r P8_load_packages, message=FALSE, warning=FALSE}
+
+library(raster)
+library(randomForest)
+
+```
+
+
+```{r P8_load_data, message=FALSE, warning=FALSE, eval=FALSE}
+
+
+fl <- list.files("./data-raw/berlin/S2", pattern = ".tif$", full.names = TRUE)
+
+rst <- stack(fl)
+names(rst) <- c(paste("b",2:8,sep=""),"b8a","b11","b12")
+
+
+```
+
+```{r P8_plot_rgb_S2, fig.height=5.25, fig.width=5, echo=TRUE}
+
+plotRGB(rst, r=3, g=2, b=1, scale=100000, stretch="lin", main="RGB composite (b8,b3,b2) of Sentinel-2")
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_rgb_S2-1.png)
+
+```{r P8_load_train_data, eval=FALSE}
+
+rstTrain <- raster("./data-raw/berlin/train/berlin_lcz_GT.tif")
+rstTrain[rstTrain==0] <- NA
+rstTrain <- ratify(rstTrain)
+names(rstTrain) <- "trainClass"
+
+rstDF <- na.omit(values(stack(rstTrain, rst)))
+rstDF[,"trainClass"] <- as.factor(as.character(rstDF[,"trainClass"]))
+
+
+```
+
+```{r P8_set_params, echo=TRUE, eval=FALSE}
+
+nEvalRounds <- 20
+pTrain <- 0.5
+n <- nrow(rstDF)
+nClasses <- length(unique(rstDF[,"trainClass"]))
+
+
+```
+
+```{r P8_init_objects, echo=TRUE, eval=FALSE}
+
+# Initialize objects
+
+confMats <- array(NA, dim = c(nClasses,nClasses,nEvalRounds))
+
+evalMatrix<-matrix(NA, nrow=nEvalRounds, ncol=3, 
+                   dimnames=list(paste("R_",1:nEvalRounds,sep=""), 
+                                 c("Accuracy","Kappa","PSS")))
+
+pb <- txtProgressBar(1, nEvalRounds, style = 3)
+
+
+```
+
+
+```{r P8_calibrate_eval_RF, echo=TRUE, eval=FALSE}
+
+
+# Run the classifier
+
+for(i in 1:nEvalRounds){
+  
+  # Create the random index for row selection at each round
+  sampIdx <- sample(1:n, size = round(n*pTrain))
+
+  # Calibrate the RF classifier
+  rf <- randomForest(y = rstDF[sampIdx, "trainClass"], 
+                     x = rstDF[sampIdx, -1], 
+                     ntree = 200)
+
+  # Predict the class to the test set
+  testSetPred <- predict(rf, newdata = rstDF[-sampIdx,], type = "response")
+
+  # Get the observed class vector
+  testSetObs <- rstDF[-sampIdx,"trainClass"]
+  
+  # Evaluate 
+  evalData <- Evaluate(testSetObs, testSetPred)
+  
+  evalMatrix[i,] <- c(evalData$Metrics["Accuracy",1],
+                      evalData$Metrics["Kappa",1],
+                      evalData$Metrics["PSS",1])
+  
+  confMats[,,i] <- evalData$ConfusionMatrix
+  
+  rstPredClassTMP <- predict(rst, model = rf, 
+                             factors = levels(rstDF[,"trainClass"]))
+  
+  if(i==1){
+    # Initiate the predicted raster
+    rstPredClass <- rstPredClassTMP
+    
+    # Get precision and recall for each class
+    Precision <- evalData$Metrics["Precision",,drop=FALSE]
+    Recall <- evalData$Metrics["Recall",,drop=FALSE]
+    
+  }else{
+    # Stack the predicted rasters
+    rstPredClass <- stack(rstPredClass, rstPredClassTMP)
+    
+    # Get precision and recall for each class
+    Precision <- rbind(Precision,evalData$Metrics["Precision",,drop=FALSE])
+    Recall <- rbind(Recall,evalData$Metrics["Recall",,drop=FALSE])
+  }
+  
+  setTxtProgressBar(pb,i)
+  
+}
+
+# save.image(file = "./data-raw/P8-session.RData")
+
+
+```
+
+
+```{r P8_print_eval_matrix}
+
+knitr::kable(evalMatrix, digits = 3)
+
+```
+
+
+```{r P8_precision_recall_average}
+
+avgPrecision <- apply(Precision,2,mean)
+print(avgPrecision)
+
+
+avgRecall <- apply(Recall,2,mean)
+print(avgRecall)
+
+
+avgF1 <- (2 * avgPrecision * avgRecall) / (avgPrecision+avgRecall)
+print(avgF1)
+
+```
+
+```{r P8_get_conf_matrix}
+
+# Best round for Kappa
+evalMatrix[which.max(evalMatrix[,"Kappa"]), , drop=FALSE]
+
+# Show confusion matrix for the best kappa
+cm <- confMats[,,which.max(evalMatrix[,"Kappa"])]
+colnames(cm) <- rownames(cm) <- paste("c",levels(rstDF[,"trainClass"]),sep="_")
+
+knitr::kable(cm)
+
+```
+
+
+```{r P8_modal_freq_rst, echo=TRUE, eval=FALSE}
+
+rstModalClass <- modal(rstPredClass)
+
+rstModalClassFreq <- modal(rstPredClass, freq=TRUE)
+
+medFreq <- zonal(rstModalClassFreq, rstTrain, fun=median)
+
+```
+
+
+```{r P8_show_model_results_freq}
+
+medFreq[order(medFreq[,2],decreasing = TRUE),]
+
+```
+
+
+
+```{r P8_plot_results, fig.width=7}
+
+
+par(mfrow=c(1,2), cex.main=0.8, cex.axis=0.8)
+
+plot(rstModalClass, main = "RF modal land cover class")
+plot(rstModalClassFreq, main = "Modal frequency")
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_results-1.png)
+
