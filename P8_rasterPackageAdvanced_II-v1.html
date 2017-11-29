@@ -139,10 +139,26 @@ library(randomForest)</code></pre>
 
 rst &lt;- stack(fl)
 names(rst) &lt;- c(paste(&quot;b&quot;,2:8,sep=&quot;&quot;),&quot;b8a&quot;,&quot;b11&quot;,&quot;b12&quot;)</code></pre>
-<pre class="r"><code>plotRGB(rst, r=3, g=2, b=1, scale=100000, stretch=&quot;lin&quot;, main=&quot;RGB composite (b8,b3,b2) of Sentinel-2&quot;)</code></pre>
+<p>Band numbers in the Sentinel-2 satellite differ from its position in the <code>RasterStack</code> object</p>
+<p>Natural Colors: 4 3 2</p>
+<pre class="r"><code>plotRGB(rst, r=3, g=2, b=1, scale=1E5, stretch=&quot;lin&quot;)</code></pre>
 <p><img src="img/P8_plot_rgb_S2-1.png" width="400" /></p>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_rgb_S2-1.png" />
+
+</div>
+<p>Healthy vegetation: 8 11 2</p>
+<pre class="r"><code>plotRGB(rst, r=7, g=9, b=1, scale=1E5, stretch=&quot;lin&quot;)</code></pre>
+<p><img src="img/P8_plot_b8_b11_b2_S2-1.png" width="400" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_b8_b11_b2_S2.png" />
+
+</div>
+<p>False color Urban: 12 11 4</p>
+<pre class="r"><code>plotRGB(rst, r=10, g=9, b=3, scale=1E5, stretch=&quot;lin&quot;)</code></pre>
+<p><img src="img/P8_plot_b12_b11_b4_S2-1.png" width="400" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_b12_b11_b4_S2.png" />
 
 </div>
 <pre class="r"><code>rstTrain &lt;- raster(&quot;./data-raw/berlin/train/berlin_lcz_GT.tif&quot;)
@@ -150,8 +166,14 @@ rstTrain[rstTrain==0] &lt;- NA
 rstTrain &lt;- ratify(rstTrain)
 names(rstTrain) &lt;- &quot;trainClass&quot;
 
+plot(rstTrain, main=&quot;Train areas by class for Berlin&quot;)
+
 rstDF &lt;- na.omit(values(stack(rstTrain, rst)))
 rstDF[,&quot;trainClass&quot;] &lt;- as.factor(as.character(rstDF[,&quot;trainClass&quot;]))</code></pre>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_load_train_data.png" />
+
+</div>
 <pre class="r"><code>nEvalRounds &lt;- 20
 pTrain &lt;- 0.5
 n &lt;- nrow(rstDF)

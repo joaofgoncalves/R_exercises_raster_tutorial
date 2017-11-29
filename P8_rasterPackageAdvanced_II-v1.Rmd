@@ -54,13 +54,38 @@ names(rst) <- c(paste("b",2:8,sep=""),"b8a","b11","b12")
 
 ```
 
+Band numbers in the Sentinel-2 satellite differ from its position in the `RasterStack` object
+
+Natural Colors: 4 3 2
+
 ```{r P8_plot_rgb_S2, fig.height=5.25, fig.width=5, echo=TRUE}
 
-plotRGB(rst, r=3, g=2, b=1, scale=100000, stretch="lin", main="RGB composite (b8,b3,b2) of Sentinel-2")
+plotRGB(rst, r=3, g=2, b=1, scale=1E5, stretch="lin")
 
 ```
 
 ![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_rgb_S2-1.png)
+
+Healthy vegetation: 8 11 2
+
+```{r P8_plot_b8_b11_b2_S2, fig.height=5.25, fig.width=5, echo=TRUE}
+
+plotRGB(rst, r=7, g=9, b=1, scale=1E5, stretch="lin")
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_b8_b11_b2_S2.png)
+
+False color Urban: 12 11 4
+
+```{r P8_plot_b12_b11_b4_S2, fig.height=5.25, fig.width=5, echo=TRUE}
+
+plotRGB(rst, r=10, g=9, b=3, scale=1E5, stretch="lin")
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_b12_b11_b4_S2.png)
+
 
 ```{r P8_load_train_data, eval=FALSE}
 
@@ -69,11 +94,15 @@ rstTrain[rstTrain==0] <- NA
 rstTrain <- ratify(rstTrain)
 names(rstTrain) <- "trainClass"
 
+plot(rstTrain, main="Train areas by class for Berlin")
+
 rstDF <- na.omit(values(stack(rstTrain, rst)))
 rstDF[,"trainClass"] <- as.factor(as.character(rstDF[,"trainClass"]))
 
 
 ```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_load_train_data.png)
 
 ```{r P8_set_params, echo=TRUE, eval=FALSE}
 
