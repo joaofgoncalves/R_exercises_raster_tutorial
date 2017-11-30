@@ -125,6 +125,126 @@ $(document).ready(function () {
 </div>
 
 
+<div id="background" class="section level3">
+<h3>Background</h3>
+<hr />
+<p>In <strong>supervised classification</strong>, contrarily to the unsupervised version, <em>a priori</em> defined reference classes are used as additional information. This initial process, determines which classes are the result of the classification. Usually a statistical or machine-learning algorithm is used to obtain a classification function which maps every instance (pixel or object, depending on the approach used) to its corresponding class. The following workflow is commonly used for deploying a supervised classifier:</p>
+<ul>
+<li><p>Definition of the thematic classes of land cover/use (e.g., coniferous forest, deciduous forest, water, agriculture, urban);</p></li>
+<li><p>Classification of suitable training areas (reference areas/pixels for each class);</p></li>
+<li><p>Calibration of a classification algorithm (for the training set(s));</p></li>
+<li><p>Classification of the entire image;</p></li>
+<li><p>Classifier performance evaluation, verification and inspection of the results (for the testing set(s)).</p></li>
+</ul>
+<p>Usually, in supervised classification, spectral data from each of the sensor bands is used to obtain a statistical or rule-based <em>spectral signature</em> for each class. Besides “direct” spectral data, other kinds of information or features can be used for classifier training. These include, band ratios, spectral indices, texture features, temporal variation features (e.g., green-up and senescence changes) as well as ancillary data (e.g., elevation, slope, built-up masks, roads).</p>
+<p>Combining the training data and the spectral (or other) features in a classifier algorithm allows to classify the entire image, outside the training space. Usually a form of train/test split set strategy (holdout cross-validation, k-fold CV, etc) is used. The training set is used for classifier calibration while the testing set is used for evaluating the classification performance. This process is usually repeated a few times and then an average value of validation indices is calculated.</p>
+<p>Because R currently provides a very-large set of classification algorithms (a good package to access them is <code>caret</code>), it is particularly well-equipped to handle this kind of problem. For developing the examples, the Random Forest (RF) algorithm will be used. RF is implemented in the (conveniently named 😉) <code>randomForest</code> package. Although packages such as <code>caret</code> provide many useful functions to handle classification (training, tuning and evaluation processes), I will not use it them here. My objective in this post, is to explore and show the basic and <em>“under the wood”</em> workflow in <em>pixel-based</em> classification of raster data.</p>
+<p>In a nutshell, RF is an ensemble learning method for classification, regression and other tasks, that operate by constructing multiple decision trees during the training stage (‘bagging’) and outputting the class that is the mode of the classes (classification) or the average prediction (regression) of the individual trees. This way, RF correct for decision trees’ habit of over-fitting to their training set. See more <a href="https://en.wikipedia.org/wiki/Random_forest">here</a> and <a href="https://www.kdnuggets.com/2017/10/random-forests-explained.html">here</a>.</p>
+<p>Sample data from the optical <strong>Sentinel-2a</strong> (S2) satellite platform will be used in the examples below (see <a href="https://earth.esa.int/web/sentinel/user-guides/sentinel-2-msi">here</a> for more details). This data was made available in the 2017 IEEE GRSS Data Fusion Contest and provided by the <em>GRSS Data and Algorithm Standard Evaluation</em> (DASE) <a href="http://dase.ticinumaerospace._com/index.php">website</a> (you have to register to access the sample datasets currently available). More specifically, we will use one Sentinel-2 scene for Berlin containing <a href="https://earth.esa.int/web/sentinel/user-guides/sentinel-2-msi/resolutions/spatial">10 spectral bands</a>, originally at 10m and 20m of spatial resolution but, re-sampled to 100m in DASE.<br />
+Along with S2 spectral data, DASE also provides training samples for calibrating classifiers. The legend encompasses a total of 12 land cover/use classes that is presented in the table below (NOTE: only 12 out of the 17 classes actually appear in the Berlin area).</p>
+<pre class="r"><code>legBerlin &lt;- read.csv(url(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/legend_berlin.csv&quot;))
+
+knitr::kable(legBerlin)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Type</th>
+<th align="right">Code</th>
+<th align="left">Land.cover.class.description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Artificial</td>
+<td align="right">1</td>
+<td align="left">Compact high-rise</td>
+</tr>
+<tr class="even">
+<td align="left">Artificial</td>
+<td align="right">2</td>
+<td align="left">Compact midrise</td>
+</tr>
+<tr class="odd">
+<td align="left">Artificial</td>
+<td align="right">3</td>
+<td align="left">Compact low-rise</td>
+</tr>
+<tr class="even">
+<td align="left">Artificial</td>
+<td align="right">4</td>
+<td align="left">Open high-rise</td>
+</tr>
+<tr class="odd">
+<td align="left">Artificial</td>
+<td align="right">5</td>
+<td align="left">Open midrise</td>
+</tr>
+<tr class="even">
+<td align="left">Artificial</td>
+<td align="right">6</td>
+<td align="left">Open low-rise</td>
+</tr>
+<tr class="odd">
+<td align="left">Artificial</td>
+<td align="right">7</td>
+<td align="left">Lightweight low-rise</td>
+</tr>
+<tr class="even">
+<td align="left">Artificial</td>
+<td align="right">8</td>
+<td align="left">Large low-rise</td>
+</tr>
+<tr class="odd">
+<td align="left">Artificial</td>
+<td align="right">9</td>
+<td align="left">Sparsely built</td>
+</tr>
+<tr class="even">
+<td align="left">Artificial</td>
+<td align="right">10</td>
+<td align="left">Heavy industry</td>
+</tr>
+<tr class="odd">
+<td align="left">Vegetated</td>
+<td align="right">11</td>
+<td align="left">Dense trees</td>
+</tr>
+<tr class="even">
+<td align="left">Vegetated</td>
+<td align="right">12</td>
+<td align="left">Scattered trees</td>
+</tr>
+<tr class="odd">
+<td align="left">Vegetated</td>
+<td align="right">13</td>
+<td align="left">Bush and scrub</td>
+</tr>
+<tr class="even">
+<td align="left">Vegetated</td>
+<td align="right">14</td>
+<td align="left">Low plants</td>
+</tr>
+<tr class="odd">
+<td align="left">Vegetated</td>
+<td align="right">15</td>
+<td align="left">Bare rock or paved</td>
+</tr>
+<tr class="even">
+<td align="left">Vegetated</td>
+<td align="right">16</td>
+<td align="left">Bare soil or sand</td>
+</tr>
+<tr class="odd">
+<td align="left">Vegetated</td>
+<td align="right">17</td>
+<td align="left">Water</td>
+</tr>
+</tbody>
+</table>
+<div id="data-loading-and-visualization" class="section level4">
+<h4>Data loading and visualization</h4>
+<hr />
+<p>Now that we have defined some useful concepts, the workflow and, the data we can start coding! 👍 👍 The first step is to download and uncompress the spectral data for Sentinel-2. These will later be used as training input features for the classification algorithm is able to identify the spectral signatures for each class.</p>
 <pre class="r"><code>## Create a folder named data-raw inside the working directory to place downloaded data
 if(!dir.exists(&quot;./data-raw&quot;)) dir.create(&quot;./data-raw&quot;)
 
@@ -133,52 +253,73 @@ download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises
 
 ## Uncompress the zip file
 unzip(&quot;./data-raw/berlin.zip&quot;, exdir = &quot;./data-raw&quot;)</code></pre>
+<p>Load the required packages for the post:</p>
 <pre class="r"><code>library(raster)
 library(randomForest)</code></pre>
+<p>Now that we have the data files available, let’s create a <code>RasterStack</code> object from it. We will also change layer names for more convenient ones.</p>
 <pre class="r"><code>fl &lt;- list.files(&quot;./data-raw/berlin/S2&quot;, pattern = &quot;.tif$&quot;, full.names = TRUE)
 
 rst &lt;- stack(fl)
 names(rst) &lt;- c(paste(&quot;b&quot;,2:8,sep=&quot;&quot;),&quot;b8a&quot;,&quot;b11&quot;,&quot;b12&quot;)</code></pre>
-<p>Band numbers in the Sentinel-2 satellite differ from its position in the <code>RasterStack</code> object</p>
-<p>Natural Colors: 4 3 2</p>
+<p>Now, let’s use the <code>plotRGB</code> function to visually explore the spectral data from Sentinel-2. RGB composites made from different band combinations allow us to highlight different aspects of land cover and see different layers of the Earth surface. Note: band numbers in the Sentinel-2 satellite differ from its position (integer index) in the <code>RasterStack</code> object.</p>
+<p>Let’s start by making a Natural Color RGB composite from S2 bands: 4,3,2.</p>
 <pre class="r"><code>plotRGB(rst, r=3, g=2, b=1, scale=1E5, stretch=&quot;lin&quot;)</code></pre>
-<p><img src="img/P8_plot_rgb_S2-1.png" width="400" /></p>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_rgb_S2-1.png" />
 
 </div>
-<p>Healthy vegetation: 8 11 2</p>
+<p>Next, let’s see an Healthy vegetation composite from S2 bands: 8,11,2.</p>
 <pre class="r"><code>plotRGB(rst, r=7, g=9, b=1, scale=1E5, stretch=&quot;lin&quot;)</code></pre>
-<p><img src="img/P8_plot_b8_b11_b2_S2-1.png" width="400" /></p>
 <div class="figure">
-<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_b8_b11_b2_S2.png" />
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_b8_b11_b2_S2-1.png" />
 
 </div>
-<p>False color Urban: 12 11 4</p>
+<p>Finally a false color urban using S2 bands: 12,11,4.</p>
 <pre class="r"><code>plotRGB(rst, r=10, g=9, b=3, scale=1E5, stretch=&quot;lin&quot;)</code></pre>
-<p><img src="img/P8_plot_b12_b11_b4_S2-1.png" width="400" /></p>
 <div class="figure">
-<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_b12_b11_b4_S2.png" />
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_b12_b11_b4_S2-1.png" />
 
 </div>
+<p>Now, let’s load the training samples used in calibration. These data serves as a reference or examples from which the classifier algorithm will “learn” the spectral signatures of each class.</p>
 <pre class="r"><code>rstTrain &lt;- raster(&quot;./data-raw/berlin/train/berlin_lcz_GT.tif&quot;)
+
+# Remove zeros from the train set (background NA)
 rstTrain[rstTrain==0] &lt;- NA
+
+# Convert the data to factor/discrete representation
 rstTrain &lt;- ratify(rstTrain)
+
+# Change the layer name
 names(rstTrain) &lt;- &quot;trainClass&quot;
 
-plot(rstTrain, main=&quot;Train areas by class for Berlin&quot;)
-
-rstDF &lt;- na.omit(values(stack(rstTrain, rst)))
-rstDF[,&quot;trainClass&quot;] &lt;- as.factor(as.character(rstDF[,&quot;trainClass&quot;]))</code></pre>
+# Visualize the data
+plot(rstTrain, main=&quot;Train areas by class for Berlin&quot;)</code></pre>
 <div class="figure">
-<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_load_train_data.png" />
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_load_train_data-1.png" />
 
 </div>
-<pre class="r"><code>nEvalRounds &lt;- 20
-pTrain &lt;- 0.5
-n &lt;- nrow(rstDF)
-nClasses &lt;- length(unique(rstDF[,&quot;trainClass&quot;]))</code></pre>
-<pre class="r"><code># Initialize objects
+<p>Let’s see how many training pixels do we have for each of the 12 classes (<span class="math inline">\(N_{total} = 24537\)</span>):</p>
+<pre class="r"><code>tab &lt;- table(values(rstTrain))
+print(tab)</code></pre>
+<pre><code>## 
+##    2    4    5    6    8    9   11   12   13   14   16   17 
+## 1534  577 2448 4010 1654  761 4960 1028 1050 4424  359 1732</code></pre>
+<p>Although perhaps not the best approach in some cases, we will convert our raster dataset into a <code>data.frame</code> object so we can use the RF classifier. Take into consideration, that in some cases, depending on the size of your <code>RasterStack</code> and the available memory, using this approach will not be possible. One simple way to overcome this, would be to convert the training raster into a <code>SpatialPoints</code> object and then run the function <code>extract</code>. This way, only specific pixels from the stack are retrieved. In any case, let’s proceed to get pixel values into our calibration data frame:</p>
+<pre class="r"><code>rstDF &lt;- na.omit(values(stack(rstTrain, rst)))
+rstDF[,&quot;trainClass&quot;] &lt;- as.factor(as.character(rstDF[,&quot;trainClass&quot;]))</code></pre>
+<p>As you probably noticed from the code above, <code>NA</code>’s were removed and the reference class column was converted to a categorical/factor variable. In practice, by “removing <code>NA</code>’s”, it means that we are restricting the data only to the set of training pixels in <code>rstTrain</code> (reducing from 428238 to 24537 rows 👍).</p>
+<p>Next up, setting some parameters. In the example, we will use holdout cross-validation (HOCV) to evaluate the RF classifier performance. This means that we will use an iterative split set approach, with a training and a testing set. So, for this purpose, we need to define the proportion of instances for training (<code>pTrain</code>); the remaining will be set aside for evaluation. Here I took into consideration the fact that RF tends to take some time to calibrate with large numbers of observations (~ &gt;10000) hence the relatively ‘large’ train proportion. We also need to define the number of repetitions in HOCV (<code>nEvalRounds</code>).</p>
+<pre class="r"><code># Number of holdout evaluation rounds
+nEvalRounds &lt;- 20
+
+# Proportion of the data used for training the classifier
+pTrain &lt;- 0.5</code></pre>
+<p>Now let’s initialize some objects that will allow us to store some info on the the classification performance and validation:</p>
+<pre class="r"><code>n &lt;- nrow(rstDF)
+nClasses &lt;- length(unique(rstDF[,&quot;trainClass&quot;]))
+
+
+# Initialize objects
 
 confMats &lt;- array(NA, dim = c(nClasses,nClasses,nEvalRounds))
 
@@ -187,7 +328,12 @@ evalMatrix&lt;-matrix(NA, nrow=nEvalRounds, ncol=3,
                                  c(&quot;Accuracy&quot;,&quot;Kappa&quot;,&quot;PSS&quot;)))
 
 pb &lt;- txtProgressBar(1, nEvalRounds, style = 3)</code></pre>
-<pre class="r"><code># Run the classifier
+<p>Now, with all set, let´s calibrate and evaluate our RF classifier (use comments to guide you through the code):</p>
+<pre class="r"><code># Evaluation function
+source(url(&quot;https://raw.githubusercontent.com/joaofgoncalves/Evaluation/master/eval.R&quot;))
+
+
+# Run the classifier
 
 for(i in 1:nEvalRounds){
   
@@ -212,8 +358,10 @@ for(i in 1:nEvalRounds){
                       evalData$Metrics[&quot;Kappa&quot;,1],
                       evalData$Metrics[&quot;PSS&quot;,1])
   
+  # Store the confusion matrices by eval round
   confMats[,,i] &lt;- evalData$ConfusionMatrix
   
+  # Classify the whole image with raster::predict function
   rstPredClassTMP &lt;- predict(rst, model = rf, 
                              factors = levels(rstDF[,&quot;trainClass&quot;]))
   
@@ -239,6 +387,7 @@ for(i in 1:nEvalRounds){
 }
 
 # save.image(file = &quot;./data-raw/P8-session.RData&quot;)</code></pre>
+<p>Three classification evaluation measures will be used: (i) <strong>overall accuracy</strong>, (ii) <strong>Kappa</strong>, and, (iii) <strong>Peirce-skill score</strong> (PSS; aka true-skill statistic). Let’s print out the results by round:</p>
 <pre class="r"><code>knitr::kable(evalMatrix, digits = 3)</code></pre>
 <table>
 <thead>
@@ -372,30 +521,34 @@ for(i in 1:nEvalRounds){
 </tr>
 </tbody>
 </table>
+<p>Next, calculate some average and sd measures across all rounds:</p>
+<pre class="r"><code>round(apply(evalMatrix,2,FUN = function(x,...) c(mean(x,...), sd(x,...))), 3)</code></pre>
+<pre><code>##      Accuracy Kappa   PSS
+## [1,]    0.787 0.753 0.747
+## [2,]    0.004 0.004 0.005</code></pre>
+<p>Overall measures seem to indicate that results are acceptable with very low variation between calibration rounds. Let’s check out some average <strong>precision</strong> (aka positive predictive value, PPV), <strong>recall</strong> (aka true positive rate, TPR) and F1 measures by class:</p>
 <pre class="r"><code>avgPrecision &lt;- apply(Precision,2,mean)
-print(avgPrecision)</code></pre>
-<pre><code>##        11        12        13        14        16        17         2 
-## 0.9632428 0.7048153 0.7171620 0.9061842 0.7886166 0.9975525 0.6570942 
-##         4         5         6         8         9 
-## 0.3449612 0.5090742 0.6979711 0.6639569 0.4841384</code></pre>
+print(round(avgPrecision, 3))</code></pre>
+<pre><code>##    11    12    13    14    16    17     2     4     5     6     8     9 
+## 0.963 0.705 0.717 0.906 0.789 0.998 0.657 0.345 0.509 0.698 0.664 0.484</code></pre>
 <pre class="r"><code>avgRecall &lt;- apply(Recall,2,mean)
-print(avgRecall)</code></pre>
-<pre><code>##         11         12         13         14         16         17 
-## 0.97912625 0.68455067 0.64847883 0.95967573 0.43395144 0.99965788 
-##          2          4          5          6          8          9 
-## 0.61060359 0.09335469 0.48139447 0.86941382 0.64690571 0.26760869</code></pre>
+print(round(avgRecall, 3))</code></pre>
+<pre><code>##    11    12    13    14    16    17     2     4     5     6     8     9 
+## 0.979 0.685 0.648 0.960 0.434 1.000 0.611 0.093 0.481 0.869 0.647 0.268</code></pre>
 <pre class="r"><code>avgF1 &lt;- (2 * avgPrecision * avgRecall) / (avgPrecision+avgRecall)
-print(avgF1)</code></pre>
-<pre><code>##        11        12        13        14        16        17         2 
-## 0.9711196 0.6945352 0.6810933 0.9321632 0.5598401 0.9986041 0.6329964 
-##         4         5         6         8         9 
-## 0.1469431 0.4948476 0.7743162 0.6553204 0.3446894</code></pre>
+print(round(avgF1, 3))</code></pre>
+<pre><code>##    11    12    13    14    16    17     2     4     5     6     8     9 
+## 0.971 0.695 0.681 0.932 0.560 0.999 0.633 0.147 0.495 0.774 0.655 0.345</code></pre>
+<p>Well, things are not so great here… 🙍‍♂️ Some classes, such as 4, 9, 5 (different artificial/urban types) and 16 (bare soil/sand) are not great. This may be a consequence of the loss of information detail due to the 100m re-sampling or some class intermixing, and train data generalization… 🤔 … this requires more investigation 😉</p>
+<p>Now let’s check the confusion matrix for the best round:</p>
 <pre class="r"><code># Best round for Kappa
 evalMatrix[which.max(evalMatrix[,&quot;Kappa&quot;]), , drop=FALSE]</code></pre>
 <pre><code>##      Accuracy     Kappa       PSS
 ## R_4 0.7946858 0.7626567 0.7569426</code></pre>
 <pre class="r"><code># Show confusion matrix for the best kappa
-cm &lt;- confMats[,,which.max(evalMatrix[,&quot;Kappa&quot;])]
+cm &lt;- as.data.frame(confMats[,,which.max(evalMatrix[,&quot;Kappa&quot;])])
+
+# Change row/col names
 colnames(cm) &lt;- rownames(cm) &lt;- paste(&quot;c&quot;,levels(rstDF[,&quot;trainClass&quot;]),sep=&quot;_&quot;)
 
 knitr::kable(cm)</code></pre>
@@ -600,33 +753,42 @@ knitr::kable(cm)</code></pre>
 </tr>
 </tbody>
 </table>
+<p>Since we obtained one classified map for each round we can pull all that information by ensembling it together through a majority vote (i.e., calculating the modal class). The <code>raster</code> package <code>modal</code> function makes it really easy to calculate this:</p>
 <pre class="r"><code>rstModalClass &lt;- modal(rstPredClass)
 
 rstModalClassFreq &lt;- modal(rstPredClass, freq=TRUE)
 
 medFreq &lt;- zonal(rstModalClassFreq, rstTrain, fun=median)</code></pre>
-<pre class="r"><code>medFreq[order(medFreq[,2],decreasing = TRUE),]</code></pre>
-<pre><code>##       zone value
-##  [1,]    6    20
-##  [2,]   11    20
-##  [3,]   12    20
-##  [4,]   14    20
-##  [5,]   17    20
-##  [6,]    2    19
-##  [7,]    8    19
-##  [8,]   13    19
-##  [9,]    5    15
-## [10,]   16    14
-## [11,]    9    13
-## [12,]    4    11</code></pre>
+<p>Using the modal frequency of the 20 classification rounds, let’s check out which classes obtained the highest ‘uncertainty’:</p>
+<pre class="r"><code>colnames(medFreq) &lt;- c(&quot;ClassCode&quot;,&quot;MedianModalFrequency&quot;)
+
+medFreq[order(medFreq[,2],decreasing = TRUE),]</code></pre>
+<pre><code>##       ClassCode MedianModalFrequency
+##  [1,]         6                   20
+##  [2,]        11                   20
+##  [3,]        12                   20
+##  [4,]        14                   20
+##  [5,]        17                   20
+##  [6,]         2                   19
+##  [7,]         8                   19
+##  [8,]        13                   19
+##  [9,]         5                   15
+## [10,]        16                   14
+## [11,]         9                   13
+## [12,]         4                   11</code></pre>
+<p>These results somewhat confirm those of the class-wise precision/recall. Classes most often shifting (lower frequency) are those with lower values for these performance measures.</p>
+<p>Finally, let’s plot our results of the the final modal classification map (and modal frequency):</p>
 <pre class="r"><code>par(mfrow=c(1,2), cex.main=0.8, cex.axis=0.8)
 
 plot(rstModalClass, main = &quot;RF modal land cover class&quot;)
 plot(rstModalClassFreq, main = &quot;Modal frequency&quot;)</code></pre>
-<p><img src="img/P8_plot_results-1.png" width="560" /></p>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P8_plot_results-1.png" />
 
+</div>
+<p>The map on the right provides some insight to identify areas that are more problematic for the classification process. However, as you can see, the results are acceptable but improvable in many ways.</p>
+<p>This concludes our exploration of the raster package and supervised classification for this post. Hope you find it useful! 😄 👍 👍</p>
+</div>
 </div>
 
 
