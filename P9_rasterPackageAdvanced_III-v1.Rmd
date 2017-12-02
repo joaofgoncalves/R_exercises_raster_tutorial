@@ -1,0 +1,176 @@
+---
+title: "P8 Advanced techniques with raster data (part-3) - Regression Kriging""
+author: "João Gonçalves"
+date: "01 December 2017"
+output: 
+  html_document:
+    self_contained: no
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.path = "img/")
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4.5, dpi = 80)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+library(raster)
+library(dplyr)
+
+fl <- list.files("./data-raw/climData/rst", pattern = ".tif$", full.names = TRUE)
+
+proj4Str <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+#proj4StrTo <- "+proj=utm +zone=29 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+ 
+
+rst <- stack(fl)
+names(rst) <- c("Elev", "Lat", "Lon")
+
+#rst <- projectRaster(rst, crs = CRS(proj4StrTo), res = 1000, method = "bilinear")
+
+
+
+climDataPT <- read.csv("./data-raw/ClimData/clim_data_pt.csv")
+
+knitr::kable(head(climDataPT, n=10))
+
+```
+
+```{r}
+
+ 
+  
+statPoints <- SpatialPointsDataFrame(coords      = climDataPT[,3:2], 
+                                     data        = climDataPT,
+                                     proj4string = CRS(proj4Str))
+
+#statPoints <- spTransform(statPoints, CRSobj = proj4StrTo)
+
+#coordsPT <- coordinates(statPoints)
+
+#climDataPT[,c("Lon","Lat")] <- coordsPT[,c("Lon","Lat")]
+
+
+plot(rst[["Elev"]], main="Elevation (meters a.s.l.) for Portugal and \nweather stations",
+     xlab = "Longitude", ylab="Latitude")
+plot(statPoints, add=TRUE)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+library(randomForest)
+library(mgcv)
+library(gstat)
+
+
+obs <- climDataPT[,"AvgTemp"]
+
+## RF calibration --------------------------------------------------------------
+
+RF <- randomForest(y = climDataPT[,"AvgTemp"], 
+                   x = climDataPT[,c("Lat","Lon","Elev")],
+                   ntree = 500,
+                   mtry = 2)
+
+pred.rf <- predict(RF)
+sqrt(mean((pred.rf - obs)^2))
+
+
+## GLM calibration ------------------------------------------------------------- 
+
+GLM <- glm(formula = AvgTemp ~ Elev + Lat + Lon, data = climDataPT)
+
+pred.glm <- predict(GLM)
+sqrt(mean(resid(GLM)^2))
+
+
+## GAM calibration -------------------------------------------------------------
+
+GAM <- gam(formula = AvgTemp ~ s(Elev) + s(Lat) + s(Lon), data = climDataPT)
+
+pred.gam <- predict(GAM)
+sqrt(mean(resid(GAM)^2))
+
+pred.gam.all <- predict(rst, GAM, type = "response")
+
+
+## Residuals Krigging ----------------------------------------------------------
+
+resid.gam <- resid(GAM)
+
+statPoints@data <- cbind(statPoints@data, modResidGAM = resid.gam)
+
+
+# Make variogram
+mod<-vgm(psill  = 0.25, 
+         model  = "Exp",
+         range  = 20,
+         nugget = 0.01)
+    
+formMod <- modResidGAM ~ 1
+
+variog <- variogram(formMod, statPoints)
+
+# Variogram fitting by Ordinary Least Sqaure
+fit_ols<-fit.variogram(variog, 
+                       model = mod, 
+                       fit.method = 6)
+
+plot(variog, fit_ols, main="OLS Model")
+    
+# Let's try a cross validation using the OLS model
+krig.cv.OLS <- krige.cv(formMod, statPoints, model=fit_ols, nfold = 10)
+
+krig.cv.OLS.RSQR <- cor(resid.gam, krig.cv.OLS$var1.pred)^2  #Pearson's R Squared
+
+cor(resid.gam, krig.cv.OLS$var1.pred, method = "spearman")
+
+krig.cv.OLS.RMSE <- sqrt(mean((krig.cv.OLS$residual)^2))     #Root Mean Square Error
+
+
+```
+
+
+```{r}
+
+## NOT WORKING!! :-( :-(
+rstPixDF <- as(rst, "SpatialPixelsDataFrame")
+ 
+
+```
+
+```{r}
+rstPixDF <- as(rst,"SpatialPointsDataFrame")
+rstPixDF <- cbind(rstPixDF@data, rstPixDF@coords)
+gridded(rstPixDF) <- ~ x + y
+crs(rstPixDF) <- proj4Str 
+
+
+```
+
+```{r}
+
+
+residKrigMap <- krige(formula = formMod ,
+                      locations = statPoints, 
+                      model = fit_ols, 
+                      newdata = rstPixDF)
+
+residKrigRstLayer <- as(residKrigMap, "RasterLayer")
+
+
+gamKrigMap <- pred.gam.all + residKrigRstLayer
+
+
+pred.gam.krig <- (pred.gam + krig.cv.OLS$var1.pred)
+
+sqrt(mean((obs - pred.gam.krig)^2))
+
+
+```
+
+
