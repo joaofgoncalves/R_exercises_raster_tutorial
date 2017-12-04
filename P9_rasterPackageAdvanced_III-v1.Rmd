@@ -1,7 +1,7 @@
 ---
-title: "P8 Advanced techniques with raster data (part-3) - Regression Kriging""
+title: "P8 Advanced techniques with raster data (part-3) - Regression Kriging"
 author: "João Gonçalves"
-date: "01 December 2017"
+date: "04 December 2017"
 output: 
   html_document:
     self_contained: no
@@ -15,22 +15,81 @@ knitr::opts_chunk$set(fig.width = 5, fig.height = 4.5, dpi = 80)
 
 ```
 
+### Background 
+
+-------------------------------------------------------------------------------------------------------
+
+
+In this post, the ninth of the geospatial processing series with raster data, I will 
+focus on interplolating and modelling air surface temperature data recorded at weather stations. 
+For this purpose we will explore __regression-kriging__ (RK), a spatial prediction technique 
+commonly used in geostatistics that combines a regression of the dependent variable (air 
+temperature in this case) on auxiliary/predictive variables (e.g., elevation, distance from shoreline) 
+with kriging of the regression residuals. RK is mathematically equivalent to the interpolation 
+method variously called universal kriging and kriging with external drift, where auxiliary 
+predictors are used directly to solve the kriging weights.
+
+__Regression-kriging__ is an implementation of the best linear unbiased predictor (BLUP) for spatial 
+data, i.e. the best linear interpolator assuming the universal model of spatial variation. Hence, RK is 
+capable of modelling the value of a target variable at some location as a sum of the deterministic 
+(handled by regression) and a stochastic component (kriging). In RK, both deterministic and stochastic 
+components of spatial variation can be modeled separately.
+
+__Regression-kriging__ is used in various fields, including meteorology, climatology, soil mapping, 
+geological mapping, species distribution modeling and similar. The only requirement for using RK 
+is that one or more covariates exist which are significantly correlated with the dependent variable. 
+
+However, RK can perform poorly if the point sample is small and non-representative of the target variable, if 
+the relation between the target variable and predictors is non-linear (although some non-linear regression 
+techniques can help on this aspect), or if the points do not represent feature space or represent only the 
+central part of it.
+
+Seven regression modeling algorithms will be used and compared through cross-validation:        
+    
+   - Interpolation:
+      - Ordinary Kriging (OK)
+   
+   - Regression:
+       - Generalized Linear Model (GLM)
+       - Generalized Additive Model (GAM)
+       - Random Forest (RF)
+   
+   - Regression-kriging:
+       - GLM + OK of residuals
+       - GAM + OK of residuals
+       - RF + OK of residuals
+       
+The sample data used for examples is the annual average air temperature for mainland Portugal which 
+includes daily records that range from 1950 to 2000.     
+
+Four auxiliary variables were considered as candidates to model the variation of air temperature:     
+
+   - Elevation (_Elev_ in meters a.s.l.),
+   - Distance to the shoreline (_distCoast_ in degrees);
+   - Latitude (_Lat_ in degrees), and,
+   - Longitude (_Lon_ in degrees).
+
+One raster layer _per_ predictive variable, with a spatial resolution of 0.009 deg (ca. 1000m), is 
+available for obtaining for calculating a consitinuous surface of temperature values.
+
+
+### Modelling development 
+
+-------------------------------------------------------------------------------------------------------
+
+#### Data loading and inspection
+
 ```{r, message=FALSE, warning=FALSE}
 
 library(raster)
-library(dplyr)
 
 fl <- list.files("./data-raw/climData/rst", pattern = ".tif$", full.names = TRUE)
 
 proj4Str <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
-#proj4StrTo <- "+proj=utm +zone=29 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
- 
+
 
 rst <- stack(fl)
-names(rst) <- c("Elev", "Lat", "Lon")
-
-#rst <- projectRaster(rst, crs = CRS(proj4StrTo), res = 1000, method = "bilinear")
-
+names(rst) <- c("distCoast", "Elev", "Lat", "Lon")
 
 
 climDataPT <- read.csv("./data-raw/ClimData/clim_data_pt.csv")
@@ -39,19 +98,23 @@ knitr::kable(head(climDataPT, n=10))
 
 ```
 
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, fig.height = 5, fig.width = 5.25}
+
+library(corrplot)
+
+corMat <- cor(climDataPT[,3:ncol(climDataPT)])
+
+corrplot.mixed(corMat, number.cex=0.8, tl.cex = 0.9, tl.col = "black", 
+               outline=FALSE, mar=c(0,0,2,2), upper="square", bg=NA)
+
+```
+
+
 ```{r}
 
- 
-  
-statPoints <- SpatialPointsDataFrame(coords      = climDataPT[,3:2], 
+statPoints <- SpatialPointsDataFrame(coords      = climDataPT[,c("Lon","Lat")], 
                                      data        = climDataPT,
                                      proj4string = CRS(proj4Str))
-
-#statPoints <- spTransform(statPoints, CRSobj = proj4StrTo)
-
-#coordsPT <- coordinates(statPoints)
-
-#climDataPT[,c("Lon","Lat")] <- coordsPT[,c("Lon","Lat")]
 
 
 plot(rst[["Elev"]], main="Elevation (meters a.s.l.) for Portugal and \nweather stations",
@@ -60,6 +123,45 @@ plot(statPoints, add=TRUE)
 
 ```
 
+```{r}
+
+
+
+kfoldSplit <- function(x, k=10, rand=TRUE, train=TRUE){
+ 
+  if(rand) x <- sample(x, size = length(x), replace = FALSE)
+  out <- suppressWarnings(split(x, factor(1:k)))
+  
+  if(train) out <- lapply(out, FUN = function(x, len) (1:len)[-x], len=length(unlist(out)))
+  return(out)
+}
+
+resid.RF <- function(x) return(x$y - x$predicted)
+
+
+
+
+```
+
+
+```{r}
+
+
+set.seed(12345)
+
+k <- 10
+
+kfolds <- kfoldSplit(1:nrow(climDataPT), k = 10, rand=TRUE, train = TRUE)
+
+evalData <- matrix(NA, nrow=k, ncol=7, 
+                   dimnames = list(1:k, c("OK","RF","GLM","GAM","RF_OK","GLM_OK","GAM_OK")))
+
+
+
+
+```
+
+
 ```{r, message=FALSE, warning=FALSE}
 
 library(randomForest)
@@ -67,69 +169,154 @@ library(mgcv)
 library(gstat)
 
 
-obs <- climDataPT[,"AvgTemp"]
-
-## RF calibration --------------------------------------------------------------
-
-RF <- randomForest(y = climDataPT[,"AvgTemp"], 
-                   x = climDataPT[,c("Lat","Lon","Elev")],
-                   ntree = 500,
-                   mtry = 2)
-
-pred.rf <- predict(RF)
-sqrt(mean((pred.rf - obs)^2))
-
-
-## GLM calibration ------------------------------------------------------------- 
-
-GLM <- glm(formula = AvgTemp ~ Elev + Lat + Lon, data = climDataPT)
-
-pred.glm <- predict(GLM)
-sqrt(mean(resid(GLM)^2))
-
-
-## GAM calibration -------------------------------------------------------------
-
-GAM <- gam(formula = AvgTemp ~ s(Elev) + s(Lat) + s(Lon), data = climDataPT)
-
-pred.gam <- predict(GAM)
-sqrt(mean(resid(GAM)^2))
-
-pred.gam.all <- predict(rst, GAM, type = "response")
-
-
-## Residuals Krigging ----------------------------------------------------------
-
-resid.gam <- resid(GAM)
-
-statPoints@data <- cbind(statPoints@data, modResidGAM = resid.gam)
-
-
-# Make variogram
-mod<-vgm(psill  = 0.25, 
-         model  = "Exp",
-         range  = 20,
-         nugget = 0.01)
+for(i in 1:k){
+  
+  cat("K-fold...",i,"of",k,"....\n")
+  
+  # TRAIN indices as integer
+  idx <- kfolds[[i]]
+  
+  # TRAIN indices as a boolean vector
+  idxBool <- (1:nrow(climDataPT)) %in% idx
+  
+  # Observed test data for the target variable
+  obs.test <- climDataPT[!idxBool, "AvgTemp"]
+  
+  
+  
+  ## ----------------------------------------------------------------------------- ##
+  ## Ordinary Kriging ----
+  ## ----------------------------------------------------------------------------- ##
     
-formMod <- modResidGAM ~ 1
-
-variog <- variogram(formMod, statPoints)
-
-# Variogram fitting by Ordinary Least Sqaure
-fit_ols<-fit.variogram(variog, 
-                       model = mod, 
-                       fit.method = 6)
-
-plot(variog, fit_ols, main="OLS Model")
+  # Make variogram
+  formMod <- AvgTemp ~ 1
+  mod <- vgm(model  = "Exp", psill  = 3, range  = 100, nugget = 0.5)
+  variog <- variogram(formMod, statPoints[idxBool, ])
+  
+  # Variogram fitting by Ordinary Least Sqaure
+  variogFitOLS<-fit.variogram(variog, model = mod,  fit.method = 6)
+  #plot(variog, variogFitOLS, main="OLS Model")
     
-# Let's try a cross validation using the OLS model
-krig.cv.OLS <- krige.cv(formMod, statPoints, model=fit_ols, nfold = 10)
+  # Krigging predictions
+  OK <- krige(formula = formMod ,
+              locations = statPoints[idxBool, ], 
+              model = variogFitOLS,
+              newdata = statPoints[!idxBool, ],
+              debug.level = 0)
+  
+  ok.pred.test <- OK@data$var1.pred
+  evalData[i,"OK"] <- sqrt(mean((ok.pred.test - obs.test)^2))
+  
+  
+  
+  ## ----------------------------------------------------------------------------- ##
+  ## RF calibration ----
+  ## ----------------------------------------------------------------------------- ##
+  
+  RF <- randomForest(y = climDataPT[idx, "AvgTemp"], 
+                     x = climDataPT[idx, c("Lat","Elev","distCoast")],
+                     ntree = 500,
+                     mtry = 2)
+  
+  rf.pred.test <- predict(RF, newdata = climDataPT[-idx,], type="response")
+  evalData[i,"RF"] <- sqrt(mean((rf.pred.test - obs.test)^2))
+  
+  # Ordinary Kriging of Random Forest residuals
+  #
+  statPointsTMP <- statPoints[idxBool, ]
+  statPointsTMP@data <- cbind(statPointsTMP@data, residRF = resid.RF(RF))
+  
+  formMod <- residRF ~ 1
+  mod <- vgm(model  = "Exp", psill  = 0.6, range  = 10, nugget = 0.01)
+  variog <- variogram(formMod, statPointsTMP)
+  
+  # Variogram fitting by Ordinary Least Sqaure
+  variogFitOLS<-fit.variogram(variog, model = mod,  fit.method = 6)
+  plot(variog, variogFitOLS, main="OLS Model")
+    
+  # Krigging predictions
+  RF.OK <- krige(formula = formMod ,
+              locations = statPointsTMP, 
+              model = variogFitOLS,
+              newdata = statPoints[!idxBool, ],
+              debug.level = 0)
+  
+  rf.ok.pred.test <- rf.pred.test + RF.OK@data$var1.pred
+  evalData[i,"RF_OK"] <- sqrt(mean((rf.ok.pred.test - obs.test)^2))
+  
+  
+  
+  ## ----------------------------------------------------------------------------- ##
+  ## GLM calibration ----
+  ## ----------------------------------------------------------------------------- ##
 
-krig.cv.OLS.RSQR <- cor(resid.gam, krig.cv.OLS$var1.pred)^2  #Pearson's R Squared
+  GLM <- glm(formula = AvgTemp ~ Elev + Lat + distCoast, data = climDataPT[idx, ])
+  
+  glm.pred.test <- predict(GLM, newdata = climDataPT[-idx,], type="response")
+  evalData[i,"GLM"] <- sqrt(mean((glm.pred.test - obs.test)^2))
+  
+  # Ordinary Kriging of GLM residuals
+  #
+  statPointsTMP <- statPoints[idxBool, ]
+  statPointsTMP@data <- cbind(statPointsTMP@data, residGLM = resid(GLM))
+  
+  formMod <- residGLM ~ 1
+  mod <- vgm(model  = "Exp", psill  = 0.4, range  = 10, nugget = 0.01)
+  variog <- variogram(formMod, statPointsTMP)
+  
+  # Variogram fitting by Ordinary Least Sqaure
+  variogFitOLS<-fit.variogram(variog, model = mod,  fit.method = 6)
+  plot(variog, variogFitOLS, main="OLS Model")
+    
+  # Krigging predictions
+  GLM.OK <- krige(formula = formMod ,
+              locations = statPointsTMP, 
+              model = variogFitOLS,
+              newdata = statPoints[!idxBool, ],
+              debug.level = 0)
+  
+  glm.ok.pred.test <- glm.pred.test + GLM.OK@data$var1.pred
+  evalData[i,"GLM_OK"] <- sqrt(mean((glm.ok.pred.test - obs.test)^2))
+  
+  
+  
+  ## ----------------------------------------------------------------------------- ##
+  ## GAM calibration ----
+  ## ----------------------------------------------------------------------------- ##
+  
+  GAM <- gam(formula = AvgTemp ~ s(Elev) + s(Lat) + s(distCoast), data = climDataPT[idx, ])
+  
+  gam.pred.test <- predict(GAM, newdata = climDataPT[-idx,], type="response")
+  evalData[i,"GAM"] <- sqrt(mean((gam.pred.test - obs.test)^2))
+ 
+  # Ordinary Kriging of GAM residuals
+  #
+  statPointsTMP <- statPoints[idxBool, ]
+  statPointsTMP@data <- cbind(statPointsTMP@data, residGAM = resid(GAM))
+  
+  formMod <- residGAM ~ 1
+  mod <- vgm(model  = "Exp", psill  = 0.3, range  = 10, nugget = 0.01)
+  variog <- variogram(formMod, statPointsTMP)
+  
+  # Variogram fitting by Ordinary Least Sqaure
+  variogFitOLS<-fit.variogram(variog, model = mod,  fit.method = 6)
+  plot(variog, variogFitOLS, main="OLS Model")
+    
+  # Krigging predictions
+  GAM.OK <- krige(formula = formMod ,
+              locations = statPointsTMP, 
+              model = variogFitOLS,
+              newdata = statPoints[!idxBool, ],
+              debug.level = 0)
+  
+  gam.ok.pred.test <- gam.pred.test + GAM.OK@data$var1.pred
+  evalData[i,"GAM_OK"] <- sqrt(mean((gam.ok.pred.test - obs.test)^2))
+  
+  
+}
 
-cor(resid.gam, krig.cv.OLS$var1.pred, method = "spearman")
 
-krig.cv.OLS.RMSE <- sqrt(mean((krig.cv.OLS$residual)^2))     #Root Mean Square Error
+round(apply(evalData,2,FUN = function(x,...) c(mean(x,...),sd(x,...))),3)
 
 
 ```
@@ -154,16 +341,39 @@ crs(rstPixDF) <- proj4Str
 
 ```{r}
 
+GAM <- gam(formula = AvgTemp ~ s(Elev) + s(Lat) + s(distCoast), data = climDataPT)
+  
+rstPredGAM <- predict(rst, GAM, type="response")
+
+
+```
+
+```{r}
+
+  statPointsTMP <- statPoints
+  statPointsTMP@data <- cbind(statPointsTMP@data, residGAM = resid(GAM))
+  
+
+  formMod <- residGAM ~ 1
+  mod <- vgm(model  = "Exp", psill  = 0.3, range  = 10, nugget = 0.02)
+  variog <- variogram(formMod, statPointsTMP)
+  
+  # Variogram fitting by Ordinary Least Sqaure
+  variogFitOLS <- fit.variogram(variog, model = mod,  fit.method = 6)
+  
+  plot(variog, variogFitOLS, main="OLS Model")
+    
 
 residKrigMap <- krige(formula = formMod ,
-                      locations = statPoints, 
-                      model = fit_ols, 
+                      locations = statPointsTMP, 
+                      model = variogFitOLS,
                       newdata = rstPixDF)
+
+
 
 residKrigRstLayer <- as(residKrigMap, "RasterLayer")
 
-
-gamKrigMap <- pred.gam.all + residKrigRstLayer
+gamKrigMap <- rstPredGAM + residKrigRstLayer
 
 
 pred.gam.krig <- (pred.gam + krig.cv.OLS$var1.pred)
@@ -172,5 +382,4 @@ sqrt(mean((obs - pred.gam.krig)^2))
 
 
 ```
-
 
