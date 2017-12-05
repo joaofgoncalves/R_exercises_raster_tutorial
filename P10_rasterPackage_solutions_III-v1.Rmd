@@ -1,0 +1,316 @@
+---
+title: "P10 Solutions to exercises with raster data (advanced)"
+author: "João Gonçalves"
+date: "5 December 2017"
+output: 
+  html_document:
+    self_contained: no
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.path = "img/")
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4.5, dpi = 80)
+
+```
+
+Below are the solutions to [these](http://r-exercises.com/2018/04/04/exercises-with-raster-data-advanced/) exercises on raster data (advanced).
+
+
+```{r P10_solution_ex1-1, message=FALSE, warning=FALSE, eval=FALSE, echo=TRUE}
+
+####################
+#                  #
+#    Exercise 1    #
+#                  #
+####################
+
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists("./data-raw")) dir.create("./data-raw")
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/LT8_PNPG_MultiBand.zip", "./data-raw/LT8_PNPG_MultiBand.zip", method = "auto")
+
+# Unzip the data to the target folder
+unzip("./data-raw/LT8_PNPG_MultiBand.zip", exdir = "./data-raw")
+
+```
+
+```{r P10_solution_ex1-2, message=FALSE, warning=FALSE}
+
+library(raster)
+
+# Load data into R
+rst <- brick("./data-raw/LC82040312015193LGN00_sr_b_1_7.tif")
+
+
+ncell(rst)
+
+nlayers(rst)
+
+```
+
+```{r P10_solution_ex2}
+
+####################
+#                  #
+#    Exercise 2    #
+#                  #
+####################
+
+plotRGB(rst, 5, 1, 3, stretch = "lin")
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P10_solution_ex2-1.png)
+
+```{r P10_solution_ex3}
+
+####################
+#                  #
+#    Exercise 3    #
+#                  #
+####################
+
+# Get a data.frame with all data
+rstDF <- values(rst)
+
+# Index for non-NA values
+idx <- complete.cases(rstDF)
+
+# Perform k-means
+km <- kmeans(rstDF[idx, ], centers = 5, iter.max = 100)
+  
+# Create a temporary integer vector for holding cluster numbers
+kmClust <- vector(mode = "integer", length = ncell(rst))
+
+# Generate the temporary clustering vector for K-means (keeps track of NA's)
+kmClust[!idx] <- NA
+kmClust[idx] <- km$cluster
+
+# Set cluster values
+kmRst <- rst[[1]]
+values(kmRst) <- kmClust
+
+```
+
+```{r P10_solution_ex4}
+
+####################
+#                  #
+#    Exercise 4    #
+#                  #
+####################
+
+library(cluster)
+
+# Perform CLARA's clustering (using euclidean distance)
+cla <- clara(rstDF[idx, ], k = 5, metric = "euclidean")
+
+# Create a temporary integer vector for holding cluster numbers
+claClust <- vector(mode = "integer", length = ncell(rst))  
+
+# Generate the temporary clustering vector for K-means (keeps track of NA's)
+claClust[!idx] <- NA
+claClust[idx] <- km$cluster
+
+# Set cluster values
+claRst <- rst[[1]]
+values(claRst) <- claClust
+
+
+```
+
+```{r P10_solution_ex5}
+
+####################
+#                  #
+#    Exercise 5    #
+#                  #
+####################
+
+library(RStoolbox)
+
+# For Landsat8OLI use only bands: 2, 3, 4, 5, 6, and, 7 	
+tctL8 <- tasseledCap(rst[[2:7]], sat="Landsat8OLI")
+
+```
+
+```{r P10_solution_ex6}
+
+####################
+#                  #
+#    Exercise 6    #
+#                  #
+####################
+
+
+library(RStoolbox)
+
+pcaL8 <- rasterPCA(rst, spca = TRUE)
+
+print(pcaL8)
+
+# Explained in the 3 comps = 99.04%
+summary(pcaL8$model)
+
+```
+
+```{r P10_solution_ex7-1, eval=FALSE, echo=TRUE}
+####################
+#                  #
+#    Exercise 7    #
+#                  #
+####################
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists("./data-raw")) dir.create("./data-raw")
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CLIM_DATA_PT.zip", "./data-raw/CLIM_DATA_PT.zip", method = "auto")
+
+## Uncompress the zip file
+unzip("./data-raw/CLIM_DATA_PT.zip", exdir = "./data-raw")
+
+```
+
+```{r P10_solution_ex7-2}
+
+library(gstat)
+
+climDataPT <- read.csv("./data-raw/ClimData/clim_data_pt.csv")
+
+proj4Str <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+
+statPoints <- SpatialPointsDataFrame(coords      = climDataPT[,c("Lon","Lat")], 
+                                     data        = climDataPT,
+                                     proj4string = CRS(proj4Str))
+
+## ORDINARY KRIGING --------------------------------
+
+set.seed(12345)
+
+formMod <- AvgTemp ~ 1
+modSph <- vgm(model  = "Sph", psill  = 3, range  = 150, nugget = 0.5)
+variog <- variogram(formMod, statPoints)
+
+# Variogram fitting by Ordinary Least Squares (OLS)
+variogFitOLS_Sph<-fit.variogram(variog, model = modSph,  fit.method = 6)
+
+# Kriging CV
+OK.sph.cv <- krige.cv(formMod, statPoints, model=variogFitOLS_Sph, nfold=5)
+
+# RMSE Spherical model
+sqrt(mean((OK.sph.cv$residual)^2))
+
+```
+
+```{r P10_solution_ex8}
+
+####################
+#                  #
+#    Exercise 8    #
+#                  #
+####################
+
+library(gstat)
+
+## ORDINARY KRIGING --------------------------------
+
+set.seed(12345)
+
+formMod <- AvgTemp ~ 1
+modExp <- vgm(model  = "Exp", psill  = 3, range  = 150, nugget = 0.5)
+variog <- variogram(formMod, statPoints)
+
+# Variogram fitting by Ordinary Least Squares (OLS)
+variogFitOLS_Exp<-fit.variogram(variog, model = modExp,  fit.method = 6)
+
+# Kriging CV
+OK.Exp.cv <- krige.cv(formMod, statPoints, model=variogFitOLS_Exp, nfold=5)
+
+# RMSE Exponential model
+sqrt(mean((OK.Exp.cv$residual)^2))
+
+```
+
+The Exponential model provided better results with lower RMSE.
+
+```{r P10_solution_ex9, fig.width=6}
+
+####################
+#                  #
+#    Exercise 9    #
+#                  #
+####################
+
+library(Cubist)
+
+set.seed(12345)
+
+idx <- sample(1:nrow(climDataPT), size = 15)
+
+cub <- cubist(x = climDataPT[-idx, c("Lat","Elev","distCoast")], 
+              y = climDataPT[-idx, "AvgTemp"])
+
+obs <- climDataPT[idx, "AvgTemp"]
+
+pred <- predict(cub, newdata = climDataPT[idx, ], type="response")
+
+# RMSE Exponential model
+sqrt(mean((obs - pred)^2))
+
+```
+
+
+```{r P10_solution_ex10}
+
+####################
+#                  #
+#    Exercise 10   #
+#                  #
+####################
+
+library(gstat)
+
+resid.cub <- climDataPT[-idx, "AvgTemp"] - predict(cub, newdata = climDataPT[-idx, ], type="response")
+
+idxbool <- 1:nrow(climDataPT) %in% idx
+
+statPointsTrain <- statPoints[!idxbool, ]
+statPointsTrain@data <- cbind(statPointsTrain@data, residCubist = resid.cub)
+
+statPointsTest <- statPoints[idxbool, ]
+
+formMod <- residCubist ~ 1
+modExp <- vgm(model  = "Exp", psill  = 0.35, range  = 5, nugget = 0.01)
+variog <- variogram(formMod, statPointsTrain)
+
+# Variogram fitting by Ordinary Least Squares (OLS)
+variogFitOLS_Exp<-fit.variogram(variog, model = modExp,  fit.method = 6)
+#plot(variog, variogFitOLS_Exp, main="OLS Model")
+
+# kriging predictions
+OK <- krige(formula = residCubist ~ 1 ,
+            locations = statPointsTrain, 
+            model = variogFitOLS_Exp,
+            newdata = statPointsTest,
+            debug.level = 0)
+
+pred.resid <- OK@data$var1.pred
+
+pred.cubist <- predict(cub, newdata = climDataPT[idx, ], type="response")
+
+pred.RK <- pred.cubist + pred.resid
+
+obs <- climDataPT[idx, "AvgTemp"]
+
+sqrt(mean((pred.RK - obs)^2))
+
+```
+
+Yes, regression-kriging does improve slightly the average temperature predictions for the test set.
+
+

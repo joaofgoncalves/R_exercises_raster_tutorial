@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="João Gonçalves" />
+
+
+<title>P10 Solutions to exercises with raster data (advanced)</title>
+
+<script src="P10_rasterPackage_solutions_III-v1_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="P10_rasterPackage_solutions_III-v1_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="P10_rasterPackage_solutions_III-v1_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="P10_rasterPackage_solutions_III-v1_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="P10_rasterPackage_solutions_III-v1_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="P10_rasterPackage_solutions_III-v1_files/navigation-1.1/tabsets.js"></script>
+<link href="P10_rasterPackage_solutions_III-v1_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="P10_rasterPackage_solutions_III-v1_files/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">P10 Solutions to exercises with raster data (advanced)</h1>
+<h4 class="author"><em>João Gonçalves</em></h4>
+<h4 class="date"><em>5 December 2017</em></h4>
+
+</div>
+
+
+<p>Below are the solutions to <a href="http://r-exercises.com/2018/04/04/exercises-with-raster-data-advanced/">these</a> exercises on raster data (advanced).</p>
+<pre class="r"><code>####################
+#                  #
+#    Exercise 1    #
+#                  #
+####################
+
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists(&quot;./data-raw&quot;)) dir.create(&quot;./data-raw&quot;)
+
+## If you run into download problems try changing: method = &quot;wget&quot;
+download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/LT8_PNPG_MultiBand.zip&quot;, &quot;./data-raw/LT8_PNPG_MultiBand.zip&quot;, method = &quot;auto&quot;)
+
+# Unzip the data to the target folder
+unzip(&quot;./data-raw/LT8_PNPG_MultiBand.zip&quot;, exdir = &quot;./data-raw&quot;)</code></pre>
+<pre class="r"><code>library(raster)
+
+# Load data into R
+rst &lt;- brick(&quot;./data-raw/LC82040312015193LGN00_sr_b_1_7.tif&quot;)
+
+
+ncell(rst)</code></pre>
+<pre><code>## [1] 2286600</code></pre>
+<pre class="r"><code>nlayers(rst)</code></pre>
+<pre><code>## [1] 7</code></pre>
+<pre class="r"><code>####################
+#                  #
+#    Exercise 2    #
+#                  #
+####################
+
+plotRGB(rst, 5, 1, 3, stretch = &quot;lin&quot;)</code></pre>
+<p><img src="img/P10_solution_ex2-1.png" width="400" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P10_solution_ex2-1.png" />
+
+</div>
+<pre class="r"><code>####################
+#                  #
+#    Exercise 3    #
+#                  #
+####################
+
+# Get a data.frame with all data
+rstDF &lt;- values(rst)
+
+# Index for non-NA values
+idx &lt;- complete.cases(rstDF)
+
+# Perform k-means
+km &lt;- kmeans(rstDF[idx, ], centers = 5, iter.max = 100)
+  
+# Create a temporary integer vector for holding cluster numbers
+kmClust &lt;- vector(mode = &quot;integer&quot;, length = ncell(rst))
+
+# Generate the temporary clustering vector for K-means (keeps track of NA&#39;s)
+kmClust[!idx] &lt;- NA
+kmClust[idx] &lt;- km$cluster
+
+# Set cluster values
+kmRst &lt;- rst[[1]]
+values(kmRst) &lt;- kmClust</code></pre>
+<pre class="r"><code>####################
+#                  #
+#    Exercise 4    #
+#                  #
+####################
+
+library(cluster)
+
+# Perform CLARA&#39;s clustering (using euclidean distance)
+cla &lt;- clara(rstDF[idx, ], k = 5, metric = &quot;euclidean&quot;)
+
+# Create a temporary integer vector for holding cluster numbers
+claClust &lt;- vector(mode = &quot;integer&quot;, length = ncell(rst))  
+
+# Generate the temporary clustering vector for K-means (keeps track of NA&#39;s)
+claClust[!idx] &lt;- NA
+claClust[idx] &lt;- km$cluster
+
+# Set cluster values
+claRst &lt;- rst[[1]]
+values(claRst) &lt;- claClust</code></pre>
+<pre class="r"><code>####################
+#                  #
+#    Exercise 5    #
+#                  #
+####################
+
+library(RStoolbox)
+
+# For Landsat8OLI use only bands: 2, 3, 4, 5, 6, and, 7     
+tctL8 &lt;- tasseledCap(rst[[2:7]], sat=&quot;Landsat8OLI&quot;)</code></pre>
+<pre class="r"><code>####################
+#                  #
+#    Exercise 6    #
+#                  #
+####################
+
+
+library(RStoolbox)
+
+pcaL8 &lt;- rasterPCA(rst, spca = TRUE)
+
+print(pcaL8)</code></pre>
+<pre><code>## $call
+## rasterPCA(img = rst, spca = TRUE)
+## 
+## $model
+## Call:
+## princomp(cor = spca, covmat = covMat[[1]])
+## 
+## Standard deviations:
+##     Comp.1     Comp.2     Comp.3     Comp.4     Comp.5     Comp.6 
+## 2.38453147 1.04487144 0.39409524 0.20287564 0.11697008 0.09781039 
+##     Comp.7 
+## 0.05034737 
+## 
+##  7  variables and  2286600 observations.
+## 
+## $map
+## class       : RasterBrick 
+## dimensions  : 1545, 1480, 2286600, 7  (nrow, ncol, ncell, nlayers)
+## resolution  : 30, 30  (x, y)
+## extent      : 549615, 594015, 4613355, 4659705  (xmin, xmax, ymin, ymax)
+## coord. ref. : +proj=utm +zone=29 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0 
+## data source : in memory
+## names       :       PC1,       PC2,       PC3,       PC4,       PC5,       PC6,       PC7 
+## min values  : -5.479014, -5.121455, -3.504654, -5.417790, -2.359389, -1.549161, -1.784862 
+## max values  : 32.568129,  4.537125, 14.160962,  4.581198,  2.599548,  1.610236,  1.010612 
+## 
+## 
+## attr(,&quot;class&quot;)
+## [1] &quot;rasterPCA&quot; &quot;RStoolbox&quot;</code></pre>
+<pre class="r"><code># Explained in the 3 comps = 99.04%
+summary(pcaL8$model)</code></pre>
+<pre><code>## Importance of components:
+##                           Comp.1    Comp.2     Comp.3     Comp.4
+## Standard deviation     2.3845315 1.0448714 0.39409524 0.20287564
+## Proportion of Variance 0.8122843 0.1559652 0.02218729 0.00587979
+## Cumulative Proportion  0.8122843 0.9682495 0.99043682 0.99631661
+##                             Comp.5      Comp.6       Comp.7
+## Standard deviation     0.116970079 0.097810387 0.0503473733
+## Proportion of Variance 0.001954571 0.001366696 0.0003621226
+## Cumulative Proportion  0.998271181 0.999637877 1.0000000000</code></pre>
+<pre class="r"><code>####################
+#                  #
+#    Exercise 7    #
+#                  #
+####################
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists(&quot;./data-raw&quot;)) dir.create(&quot;./data-raw&quot;)
+
+## If you run into download problems try changing: method = &quot;wget&quot;
+download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CLIM_DATA_PT.zip&quot;, &quot;./data-raw/CLIM_DATA_PT.zip&quot;, method = &quot;auto&quot;)
+
+## Uncompress the zip file
+unzip(&quot;./data-raw/CLIM_DATA_PT.zip&quot;, exdir = &quot;./data-raw&quot;)</code></pre>
+<pre class="r"><code>library(gstat)</code></pre>
+<pre><code>## Warning: package &#39;gstat&#39; was built under R version 3.4.2</code></pre>
+<pre class="r"><code>climDataPT &lt;- read.csv(&quot;./data-raw/ClimData/clim_data_pt.csv&quot;)
+
+proj4Str &lt;- &quot;+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs&quot;
+
+statPoints &lt;- SpatialPointsDataFrame(coords      = climDataPT[,c(&quot;Lon&quot;,&quot;Lat&quot;)], 
+                                     data        = climDataPT,
+                                     proj4string = CRS(proj4Str))
+
+## ORDINARY KRIGING --------------------------------
+
+set.seed(12345)
+
+formMod &lt;- AvgTemp ~ 1
+modSph &lt;- vgm(model  = &quot;Sph&quot;, psill  = 3, range  = 150, nugget = 0.5)
+variog &lt;- variogram(formMod, statPoints)
+
+# Variogram fitting by Ordinary Least Squares (OLS)
+variogFitOLS_Sph&lt;-fit.variogram(variog, model = modSph,  fit.method = 6)
+
+# Kriging CV
+OK.sph.cv &lt;- krige.cv(formMod, statPoints, model=variogFitOLS_Sph, nfold=5)
+
+# RMSE Spherical model
+sqrt(mean((OK.sph.cv$residual)^2))</code></pre>
+<pre><code>## [1] 1.337588</code></pre>
+<pre class="r"><code>####################
+#                  #
+#    Exercise 8    #
+#                  #
+####################
+
+library(gstat)
+
+## ORDINARY KRIGING --------------------------------
+
+set.seed(12345)
+
+formMod &lt;- AvgTemp ~ 1
+modExp &lt;- vgm(model  = &quot;Exp&quot;, psill  = 3, range  = 150, nugget = 0.5)
+variog &lt;- variogram(formMod, statPoints)
+
+# Variogram fitting by Ordinary Least Squares (OLS)
+variogFitOLS_Exp&lt;-fit.variogram(variog, model = modExp,  fit.method = 6)
+
+# Kriging CV
+OK.Exp.cv &lt;- krige.cv(formMod, statPoints, model=variogFitOLS_Exp, nfold=5)
+
+# RMSE Exponential model
+sqrt(mean((OK.Exp.cv$residual)^2))</code></pre>
+<pre><code>## [1] 1.223307</code></pre>
+<p>The Exponential model provided better results with lower RMSE.</p>
+<pre class="r"><code>####################
+#                  #
+#    Exercise 9    #
+#                  #
+####################
+
+library(Cubist)</code></pre>
+<pre><code>## Warning: package &#39;Cubist&#39; was built under R version 3.4.3</code></pre>
+<pre><code>## Loading required package: lattice</code></pre>
+<pre class="r"><code>set.seed(12345)
+
+idx &lt;- sample(1:nrow(climDataPT), size = 15)
+
+cub &lt;- cubist(x = climDataPT[-idx, c(&quot;Lat&quot;,&quot;Elev&quot;,&quot;distCoast&quot;)], 
+              y = climDataPT[-idx, &quot;AvgTemp&quot;])
+
+obs &lt;- climDataPT[idx, &quot;AvgTemp&quot;]
+
+pred &lt;- predict(cub, newdata = climDataPT[idx, ], type=&quot;response&quot;)
+
+# RMSE Exponential model
+sqrt(mean((obs - pred)^2))</code></pre>
+<pre><code>## [1] 0.624294</code></pre>
+<pre class="r"><code>####################
+#                  #
+#    Exercise 10   #
+#                  #
+####################
+
+library(gstat)
+
+resid.cub &lt;- climDataPT[-idx, &quot;AvgTemp&quot;] - predict(cub, newdata = climDataPT[-idx, ], type=&quot;response&quot;)
+
+idxbool &lt;- 1:nrow(climDataPT) %in% idx
+
+statPointsTrain &lt;- statPoints[!idxbool, ]
+statPointsTrain@data &lt;- cbind(statPointsTrain@data, residCubist = resid.cub)
+
+statPointsTest &lt;- statPoints[idxbool, ]
+
+formMod &lt;- residCubist ~ 1
+modExp &lt;- vgm(model  = &quot;Exp&quot;, psill  = 0.35, range  = 5, nugget = 0.01)
+variog &lt;- variogram(formMod, statPointsTrain)
+
+# Variogram fitting by Ordinary Least Squares (OLS)
+variogFitOLS_Exp&lt;-fit.variogram(variog, model = modExp,  fit.method = 6)</code></pre>
+<pre><code>## Warning in fit.variogram(variog, model = modExp, fit.method = 6): No
+## convergence after 200 iterations: try different initial values?</code></pre>
+<pre class="r"><code>#plot(variog, variogFitOLS_Exp, main=&quot;OLS Model&quot;)
+
+# kriging predictions
+OK &lt;- krige(formula = residCubist ~ 1 ,
+            locations = statPointsTrain, 
+            model = variogFitOLS_Exp,
+            newdata = statPointsTest,
+            debug.level = 0)
+
+pred.resid &lt;- OK@data$var1.pred
+
+pred.cubist &lt;- predict(cub, newdata = climDataPT[idx, ], type=&quot;response&quot;)
+
+pred.RK &lt;- pred.cubist + pred.resid
+
+obs &lt;- climDataPT[idx, &quot;AvgTemp&quot;]
+
+sqrt(mean((pred.RK - obs)^2))</code></pre>
+<pre><code>## [1] 0.6110832</code></pre>
+<p>Yes, regression-kriging does improve slightly the average temperature predictions for the test set.</p>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
