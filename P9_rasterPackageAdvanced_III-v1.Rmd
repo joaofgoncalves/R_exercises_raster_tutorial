@@ -21,8 +21,8 @@ knitr::opts_chunk$set(fig.width = 5, fig.height = 4.5, dpi = 80)
 
 
 In this post, the ninth of the geospatial processing series with raster data, I will 
-focus on interplolating and modelling air surface temperature data recorded at weather stations. 
-For this purpose we will explore __regression-kriging__ (RK), a spatial prediction technique 
+focus on interpolating and modelling air surface temperature data recorded at weather stations. 
+For this purpose I will explore __regression-kriging__ (RK), a spatial prediction technique 
 commonly used in geostatistics that combines a regression of the dependent variable (air 
 temperature in this case) on auxiliary/predictive variables (e.g., elevation, distance from shoreline) 
 with kriging of the regression residuals. RK is mathematically equivalent to the interpolation 
@@ -30,21 +30,25 @@ method variously called universal kriging and kriging with external drift, where
 predictors are used directly to solve the kriging weights.
 
 __Regression-kriging__ is an implementation of the best linear unbiased predictor (BLUP) for spatial 
-data, i.e. the best linear interpolator assuming the universal model of spatial variation. Hence, RK is 
-capable of modelling the value of a target variable at some location as a sum of the deterministic 
+data, i.e. the best linear interpolator assuming the _universal model of spatial variation_. Hence, RK is 
+capable of modelling the value of a target variable at some location as a sum of a deterministic commponent  
 (handled by regression) and a stochastic component (kriging). In RK, both deterministic and stochastic 
-components of spatial variation can be modeled separately.
+components of spatial variation can be modeled separately. Once the deterministic part of variation has 
+been estimated, the obtained residuals can be interpolated with kriging and added back to the 
+estimated trend.
+
+![Scheme showing the universal model of spatial variation with three main components - by Tomislav Hengl](https://upload.wikimedia.org/wikipedia/commons/3/39/The_universal_model_of_spatial_variation.jpg)
 
 __Regression-kriging__ is used in various fields, including meteorology, climatology, soil mapping, 
 geological mapping, species distribution modeling and similar. The only requirement for using RK 
 is that one or more covariates exist which are significantly correlated with the dependent variable. 
 
-However, RK can perform poorly if the point sample is small and non-representative of the target variable, if 
-the relation between the target variable and predictors is non-linear (although some non-linear regression 
-techniques can help on this aspect), or if the points do not represent feature space or represent only the 
-central part of it.
+Although powerful, RK can perform poorly if the point sample is small and non-representative of the target 
+variable, if the relation between the target variable and predictors is non-linear (although some non-linear 
+regression techniques can help on this aspect), or if the points do not represent feature space or represent 
+only the central part of it.
 
-Seven regression modeling algorithms will be used and compared through cross-validation:        
+Seven regression algorithms will be used and compared through cross-validation (10-fold CV):        
     
    - Interpolation:
       - Ordinary Kriging (OK)
@@ -60,17 +64,18 @@ Seven regression modeling algorithms will be used and compared through cross-val
        - RF + OK of residuals
        
 The sample data used for examples is the annual average air temperature for mainland Portugal which 
-includes daily records that range from 1950 to 2000.     
+includes and summarizes daily records that range from 1950 to 2000. A total of 95 stations are 
+available, unevenly dispersed throughout the country.      
 
 Four auxiliary variables were considered as candidates to model the variation of air temperature:     
 
    - Elevation (_Elev_ in meters a.s.l.),
-   - Distance to the shoreline (_distCoast_ in degrees);
+   - Distance to the coastline (_distCoast_ in degrees);
    - Latitude (_Lat_ in degrees), and,
    - Longitude (_Lon_ in degrees).
 
-One raster layer _per_ predictive variable, with a spatial resolution of 0.009 deg (ca. 1000m), is 
-available for obtaining for calculating a consitinuous surface of temperature values.
+One raster layer _per_ predictive variable, with a spatial resolution of 0.009 deg (ca. 1000m) in WGS 1984 
+Geographic Coordinate System, is available for calculating a continuous surface of temperature values.
 
 
 ### Modelling development 
@@ -79,17 +84,54 @@ available for obtaining for calculating a consitinuous surface of temperature va
 
 #### Data loading and inspection
 
-```{r, message=FALSE, warning=FALSE}
+We will start by downloading and unzipping the sample data from the GitHub repository:
+
+```{r P9_download_data_from_github, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists("./data-raw")) dir.create("./data-raw")
+
+## If you run into download problems try changing: method = "wget"
+download.file("https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CLIM_DATA_PT.zip", "./data-raw/CLIM_DATA_PT.zip", method = "auto")
+
+## Uncompress the zip file
+unzip("./data-raw/CLIM_DATA_PT.zip", exdir = "./data-raw")
+
+
+```
+
+Now, let's load the raster layers containing the predictive variables used to build 
+the regression model of air temperature:
+
+```{r P9_load_raster_lib, echo=FALSE, message=FALSE, warning=FALSE}
 
 library(raster)
 
+```
+
+```{r P9_raster_layers}
+
+library(raster)
+
+# GeoTIFF file list
 fl <- list.files("./data-raw/climData/rst", pattern = ".tif$", full.names = TRUE)
 
-proj4Str <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
-
-
+# Create the raster stack
 rst <- stack(fl)
+
+# Change the layer names to coincide with table data
 names(rst) <- c("distCoast", "Elev", "Lat", "Lon")
+
+plot(rst)
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_raster_layers-1.png)
+
+Next step, let's read the point data containing annual average temperature values along with 
+location and predictive variables for each weather station:
+
+```{r P9_read_point_weather_st_data, message=FALSE, warning=FALSE}
 
 
 climDataPT <- read.csv("./data-raw/ClimData/clim_data_pt.csv")
@@ -98,7 +140,41 @@ knitr::kable(head(climDataPT, n=10))
 
 ```
 
-```{r message=FALSE, warning=FALSE, paged.print=FALSE, fig.height = 5, fig.width = 5.25}
+Based on the previous data, create a `SpatialPointsDataFrame` object to store all points and make 
+some preliminary plots:
+
+```{r P9_make_sp_object, message=FALSE, warning=FALSE, paged.print=FALSE, fig.width=8}
+
+proj4Str <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+
+statPoints <- SpatialPointsDataFrame(coords      = climDataPT[,c("Lon","Lat")], 
+                                     data        = climDataPT,
+                                     proj4string = CRS(proj4Str))
+
+
+par(mfrow=c(1,2),mar=c(5,6,3,2))
+
+plot(rst[["Elev"]], main="Elevation (meters a.s.l.) for Portugal\n and weather stations",
+     xlab = "Longitude", ylab="Latitude")
+plot(statPoints, add=TRUE)
+
+hist(climDataPT$AvgTemp, xlab= "Temperature (ºC)", main="Annual avg. temperature")
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_make_sp_object-1.png)
+
+
+From the figure we can see that: (i) weather stations tend to cover more the areas close to 
+the coastline and with lower altitude, and, (ii) temperature values are 'left-skewed' with a median 
+equal to `r round(median(climDataPT$AvgTemp), 3)` and a median-absolute deviation (MAD) of 
+`r round(median(climDataPT$AvgTemp), 3)`.    
+
+Before proceeding, it is a good idea to inspect the correlation matrix to analyze the strength of 
+association between the response and the predictive variables. For this, we will use the package 
+`corrplot` with some nit graphical options `r emo::ji("thumbsup")` `r emo::ji("thumbsup")` 
+
+```{r P9_corrplot, message=FALSE, warning=FALSE, paged.print=FALSE, fig.height = 5, fig.width = 5.25}
 
 library(corrplot)
 
@@ -109,60 +185,79 @@ corrplot.mixed(corMat, number.cex=0.8, tl.cex = 0.9, tl.col = "black",
 
 ```
 
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_corrplot-1.png)
 
-```{r}
-
-statPoints <- SpatialPointsDataFrame(coords      = climDataPT[,c("Lon","Lat")], 
-                                     data        = climDataPT,
-                                     proj4string = CRS(proj4Str))
-
-
-plot(rst[["Elev"]], main="Elevation (meters a.s.l.) for Portugal and \nweather stations",
-     xlab = "Longitude", ylab="Latitude")
-plot(statPoints, add=TRUE)
-
-```
-
-```{r}
+The correlation plot evidences that all predictive variables seem to be correlated with the 
+average temperature, especially 'Elevation' and 'Latitude' which are well-known regional controls of 
+temperature variation. It also shows that (as expected, given the country geometric shape) both 
+'Longitude' and 'Distance to the coast' are highly correlated. As such, given that 'Longitude' is 
+less associated to temperature and its climatic effect is less "direct" (compared to 'distCoast') 
+we will remove it.
 
 
+#### Regression-kriging and model comparison
 
-kfoldSplit <- function(x, k=10, rand=TRUE, train=TRUE){
- 
-  if(rand) x <- sample(x, size = length(x), replace = FALSE)
+For comparing the different RK algorithms, we will use 10-fold cross validation and the Root-mean 
+square error as the evaluation metric.
+
+![RMSE formula](https://cdn-images-1.medium.com/max/1600/1*9hQVcasuwx5ddq_s3MFCyw.gif)
+
+_Kriging parameters_ __nugget__, (partial) __sill__, and __range__ will be fit through Ordinary 
+Least Squares (OLS) from a set of previously defined values that were adjusted with the help of 
+some visual inspection and trial-and-error. The _Exponential_ model was selected since it gave 
+generally best results in preliminary analyses. 
+
+![Semi-variogram parameters](https://www.intechopen.com/source/html/39857/media/image1.jpeg)
+
+The functionalities in package `gstat` were used for all geostatistical analyses.      
+
+--------------------------------------------------------------------------------------
+
+
+Now, let's define some ancillary functions for creating the k-fold train/test data splits 
+and for obtaining the regression residuals out of a random forest object:
+
+```{r P9_ancillary_functions}
+
+# Generate the K-fold train--test splits
+# x are the row indices
+# Outputs a list with test (or train) indices
+kfoldSplit <- function(x, k=10, train=TRUE){
+  x <- sample(x, size = length(x), replace = FALSE)
   out <- suppressWarnings(split(x, factor(1:k)))
-  
   if(train) out <- lapply(out, FUN = function(x, len) (1:len)[-x], len=length(unlist(out)))
   return(out)
 }
 
+# Regression residuals from RF object
 resid.RF <- function(x) return(x$y - x$predicted)
-
-
-
 
 ```
 
 
-```{r}
+We also need to define some additional parameters and initialize the matrix that will store all 
+RMSE values (one for each training round).
+
+```{r P9_set_some_params_init_eval_obj}
 
 
 set.seed(12345)
 
 k <- 10
 
-kfolds <- kfoldSplit(1:nrow(climDataPT), k = 10, rand=TRUE, train = TRUE)
+kfolds <- kfoldSplit(1:nrow(climDataPT), k = 10, train = TRUE)
 
 evalData <- matrix(NA, nrow=k, ncol=7, 
                    dimnames = list(1:k, c("OK","RF","GLM","GAM","RF_OK","GLM_OK","GAM_OK")))
 
-
-
-
 ```
 
 
-```{r, message=FALSE, warning=FALSE}
+Now we are ready to start modelling! `r emo::ji("happy")` One code block, inside the 'for' loop, will 
+be used for each regression algorithm tested. Notice how (train) residuals are interpolated through 
+kriging and then (test) residuals are added to (test) regression results for evaluation. Use 
+
+```{r P9_model_dev_and_eval, message=FALSE, warning=FALSE}
 
 library(randomForest)
 library(mgcv)
@@ -197,7 +292,7 @@ for(i in 1:k){
   variogFitOLS<-fit.variogram(variog, model = mod,  fit.method = 6)
   #plot(variog, variogFitOLS, main="OLS Model")
     
-  # Krigging predictions
+  # kriging predictions
   OK <- krige(formula = formMod ,
               locations = statPoints[idxBool, ], 
               model = variogFitOLS,
@@ -232,9 +327,9 @@ for(i in 1:k){
   
   # Variogram fitting by Ordinary Least Sqaure
   variogFitOLS<-fit.variogram(variog, model = mod,  fit.method = 6)
-  plot(variog, variogFitOLS, main="OLS Model")
+  #plot(variog, variogFitOLS, main="OLS Model")
     
-  # Krigging predictions
+  # kriging predictions
   RF.OK <- krige(formula = formMod ,
               locations = statPointsTMP, 
               model = variogFitOLS,
@@ -266,9 +361,9 @@ for(i in 1:k){
   
   # Variogram fitting by Ordinary Least Sqaure
   variogFitOLS<-fit.variogram(variog, model = mod,  fit.method = 6)
-  plot(variog, variogFitOLS, main="OLS Model")
+  #plot(variog, variogFitOLS, main="OLS Model")
     
-  # Krigging predictions
+  # kriging predictions
   GLM.OK <- krige(formula = formMod ,
               locations = statPointsTMP, 
               model = variogFitOLS,
@@ -300,9 +395,9 @@ for(i in 1:k){
   
   # Variogram fitting by Ordinary Least Sqaure
   variogFitOLS<-fit.variogram(variog, model = mod,  fit.method = 6)
-  plot(variog, variogFitOLS, main="OLS Model")
+  #plot(variog, variogFitOLS, main="OLS Model")
     
-  # Krigging predictions
+  # kriging predictions
   GAM.OK <- krige(formula = formMod ,
               locations = statPointsTMP, 
               model = variogFitOLS,
@@ -312,34 +407,30 @@ for(i in 1:k){
   gam.ok.pred.test <- gam.pred.test + GAM.OK@data$var1.pred
   evalData[i,"GAM_OK"] <- sqrt(mean((gam.ok.pred.test - obs.test)^2))
   
-  
 }
 
+```
+
+
+Let's check the average and st.-dev. results for the 10-folds CV:
+
+```{r P9_average_RMSE_results}
 
 round(apply(evalData,2,FUN = function(x,...) c(mean(x,...),sd(x,...))),3)
 
-
 ```
 
 
-```{r}
+From the results above we can see that RK performed generally better than  
+the regression techniques alone or tahn Ordinary Kriging. The __GAM-based RK method 
+obtained the best scores__ with a RMSE of ca. `r round(mean(evalData[,"GAM_OK"]), 3)`. 
+These are pretty good results!! `r emo::ji("happy")` `r emo::ji("thumbsup")` `r emo::ji("thumbsup")`    
 
-## NOT WORKING!! :-( :-(
-rstPixDF <- as(rst, "SpatialPixelsDataFrame")
- 
+To finalize, we will predict the temperature values for the entire surface of mainland Portugal 
+based on GAM-based Regression Kriging, which was the best performing technique on the test. For this 
+we will not use any test/train partition but the entire dataset:
 
-```
-
-```{r}
-rstPixDF <- as(rst,"SpatialPointsDataFrame")
-rstPixDF <- cbind(rstPixDF@data, rstPixDF@coords)
-gridded(rstPixDF) <- ~ x + y
-crs(rstPixDF) <- proj4Str 
-
-
-```
-
-```{r}
+```{r P9_GAM_modelling}
 
 GAM <- gam(formula = AvgTemp ~ s(Elev) + s(Lat) + s(distCoast), data = climDataPT)
   
@@ -348,38 +439,64 @@ rstPredGAM <- predict(rst, GAM, type="response")
 
 ```
 
-```{r}
 
-  statPointsTMP <- statPoints
-  statPointsTMP@data <- cbind(statPointsTMP@data, residGAM = resid(GAM))
-  
+Next we need to obtain a surface with kriging-interpolated residuals. For that, we have to 
+convert the input `RasterStack` or `RasterLayer` into a `SpatialPixelsDataFrame` so that 
+the `krige` function can use it as a reference:
 
-  formMod <- residGAM ~ 1
-  mod <- vgm(model  = "Exp", psill  = 0.3, range  = 10, nugget = 0.02)
-  variog <- variogram(formMod, statPointsTMP)
-  
-  # Variogram fitting by Ordinary Least Sqaure
-  variogFitOLS <- fit.variogram(variog, model = mod,  fit.method = 6)
-  
-  plot(variog, variogFitOLS, main="OLS Model")
-    
+```{r P9_create_spatial_pixels_DF}
+
+rstPixDF <- as(rst[[1]], "SpatialPixelsDataFrame")
+
+```
+
+
+Like before, we will interpolate the regression residuals with kriging and add them 
+back to the regression results.
+
+```{r P9_krig_resid, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+# Create a temporary SpatialPointsDF object to store GAM residuals
+statPointsTMP <- statPoints
+crs(statPointsTMP) <- crs(rstPixDF)
+statPointsTMP@data <- cbind(statPointsTMP@data, residGAM = resid(GAM))
+
+# Define the kriging parameters and fit the variogram using OLS
+formMod <- residGAM ~ 1
+mod <- vgm(model  = "Exp", psill  = 0.15, range  = 10, nugget = 0.01)
+variog <- variogram(formMod, statPointsTMP)
+variogFitOLS <- fit.variogram(variog, model = mod,  fit.method = 6)
+
+# Plot the results
+plot(variog, variogFitOLS, main="Semi-variogram of GAM residuals")
+
+```
+
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_krig_resid-1.png)
+
+The exponential semi-variogram looks reasonable although some lack-of-convergence problems... 
+`r emo::ji("worried")` `r emo::ji("pensive")`      
+
+Finally, let's check the average temperature map obtained from GAM RK:
+
+```{r P9_final_map, fig.height=8, fig.width=5}
 
 residKrigMap <- krige(formula = formMod ,
                       locations = statPointsTMP, 
                       model = variogFitOLS,
                       newdata = rstPixDF)
 
-
-
 residKrigRstLayer <- as(residKrigMap, "RasterLayer")
 
 gamKrigMap <- rstPredGAM + residKrigRstLayer
 
-
-pred.gam.krig <- (pred.gam + krig.cv.OLS$var1.pred)
-
-sqrt(mean((obs - pred.gam.krig)^2))
-
+plot(gamKrigMap, main="Annual average air temperature\n(GAM regression-kriging)",
+     xlab="Longitude", ylab="Latitude", cex.main=0.8, cex.axis=0.7, cex=0.8)
 
 ```
+![](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_final_map-1.png)
+
+This concludes our exploration of the raster package and regression kriging for 
+this post. Hope you find it useful! `r emo::ji("smile")` `r emo::ji("thumbsup")` `r emo::ji("thumbsup")`
+
 

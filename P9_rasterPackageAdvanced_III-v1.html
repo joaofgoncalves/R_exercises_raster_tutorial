@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="João Gonçalves" />
+
+<meta name="date" content="2017-12-04" />
+
+<title>P8 Advanced techniques with raster data (part-3) - Regression Kriging</title>
+
+<script src="P9_rasterPackageAdvanced_III-v1_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="P9_rasterPackageAdvanced_III-v1_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="P9_rasterPackageAdvanced_III-v1_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="P9_rasterPackageAdvanced_III-v1_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="P9_rasterPackageAdvanced_III-v1_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="P9_rasterPackageAdvanced_III-v1_files/navigation-1.1/tabsets.js"></script>
+<link href="P9_rasterPackageAdvanced_III-v1_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="P9_rasterPackageAdvanced_III-v1_files/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">P8 Advanced techniques with raster data (part-3) - Regression Kriging</h1>
+<h4 class="author"><em>João Gonçalves</em></h4>
+<h4 class="date"><em>04 December 2017</em></h4>
+
+</div>
+
+
+<div id="background" class="section level3">
+<h3>Background</h3>
+<hr />
+<p>In this post, the ninth of the geospatial processing series with raster data, I will focus on interpolating and modelling air surface temperature data recorded at weather stations. For this purpose I will explore <strong>regression-kriging</strong> (RK), a spatial prediction technique commonly used in geostatistics that combines a regression of the dependent variable (air temperature in this case) on auxiliary/predictive variables (e.g., elevation, distance from shoreline) with kriging of the regression residuals. RK is mathematically equivalent to the interpolation method variously called universal kriging and kriging with external drift, where auxiliary predictors are used directly to solve the kriging weights.</p>
+<p><strong>Regression-kriging</strong> is an implementation of the best linear unbiased predictor (BLUP) for spatial data, i.e. the best linear interpolator assuming the <em>universal model of spatial variation</em>. Hence, RK is capable of modelling the value of a target variable at some location as a sum of a deterministic commponent<br />
+(handled by regression) and a stochastic component (kriging). In RK, both deterministic and stochastic components of spatial variation can be modeled separately. Once the deterministic part of variation has been estimated, the obtained residuals can be interpolated with kriging and added back to the estimated trend.</p>
+<div class="figure">
+<img src="https://upload.wikimedia.org/wikipedia/commons/3/39/The_universal_model_of_spatial_variation.jpg" alt="Scheme showing the universal model of spatial variation with three main components - by Tomislav Hengl" />
+<p class="caption">Scheme showing the universal model of spatial variation with three main components - by Tomislav Hengl</p>
+</div>
+<p><strong>Regression-kriging</strong> is used in various fields, including meteorology, climatology, soil mapping, geological mapping, species distribution modeling and similar. The only requirement for using RK is that one or more covariates exist which are significantly correlated with the dependent variable.</p>
+<p>Although powerful, RK can perform poorly if the point sample is small and non-representative of the target variable, if the relation between the target variable and predictors is non-linear (although some non-linear regression techniques can help on this aspect), or if the points do not represent feature space or represent only the central part of it.</p>
+<p>Seven regression algorithms will be used and compared through cross-validation (10-fold CV):</p>
+<ul>
+<li>Interpolation:
+<ul>
+<li>Ordinary Kriging (OK)</li>
+</ul></li>
+<li>Regression:
+<ul>
+<li>Generalized Linear Model (GLM)</li>
+<li>Generalized Additive Model (GAM)</li>
+<li>Random Forest (RF)</li>
+</ul></li>
+<li>Regression-kriging:
+<ul>
+<li>GLM + OK of residuals</li>
+<li>GAM + OK of residuals</li>
+<li>RF + OK of residuals</li>
+</ul></li>
+</ul>
+<p>The sample data used for examples is the annual average air temperature for mainland Portugal which includes and summarizes daily records that range from 1950 to 2000. A total of 95 stations are available, unevenly dispersed throughout the country.</p>
+<p>Four auxiliary variables were considered as candidates to model the variation of air temperature:</p>
+<ul>
+<li>Elevation (<em>Elev</em> in meters a.s.l.),</li>
+<li>Distance to the coastline (<em>distCoast</em> in degrees);</li>
+<li>Latitude (<em>Lat</em> in degrees), and,</li>
+<li>Longitude (<em>Lon</em> in degrees).</li>
+</ul>
+<p>One raster layer <em>per</em> predictive variable, with a spatial resolution of 0.009 deg (ca. 1000m) in WGS 1984 Geographic Coordinate System, is available for calculating a continuous surface of temperature values.</p>
+</div>
+<div id="modelling-development" class="section level3">
+<h3>Modelling development</h3>
+<hr />
+<div id="data-loading-and-inspection" class="section level4">
+<h4>Data loading and inspection</h4>
+<p>We will start by downloading and unzipping the sample data from the GitHub repository:</p>
+<pre class="r"><code>## Create a folder named data-raw inside the working directory to place downloaded data
+if(!dir.exists(&quot;./data-raw&quot;)) dir.create(&quot;./data-raw&quot;)
+
+## If you run into download problems try changing: method = &quot;wget&quot;
+download.file(&quot;https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CLIM_DATA_PT.zip&quot;, &quot;./data-raw/CLIM_DATA_PT.zip&quot;, method = &quot;auto&quot;)
+
+## Uncompress the zip file
+unzip(&quot;./data-raw/CLIM_DATA_PT.zip&quot;, exdir = &quot;./data-raw&quot;)</code></pre>
+<p>Now, let’s load the raster layers containing the predictive variables used to build the regression model of air temperature:</p>
+<pre class="r"><code>library(raster)
+
+# GeoTIFF file list
+fl &lt;- list.files(&quot;./data-raw/climData/rst&quot;, pattern = &quot;.tif$&quot;, full.names = TRUE)
+
+# Create the raster stack
+rst &lt;- stack(fl)
+
+# Change the layer names to coincide with table data
+names(rst) &lt;- c(&quot;distCoast&quot;, &quot;Elev&quot;, &quot;Lat&quot;, &quot;Lon&quot;)
+
+plot(rst)</code></pre>
+<p><img src="img/P9_raster_layers-1.png" width="400" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_raster_layers-1.png" />
+
+</div>
+<p>Next step, let’s read the point data containing annual average temperature values along with location and predictive variables for each weather station:</p>
+<pre class="r"><code>climDataPT &lt;- read.csv(&quot;./data-raw/ClimData/clim_data_pt.csv&quot;)
+
+knitr::kable(head(climDataPT, n=10))</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">StationName</th>
+<th align="right">StationID</th>
+<th align="right">Lat</th>
+<th align="right">Lon</th>
+<th align="right">Elev</th>
+<th align="right">AvgTemp</th>
+<th align="right">distCoast</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Sagres</td>
+<td align="right">1</td>
+<td align="right">36.98</td>
+<td align="right">-8.95</td>
+<td align="right">40</td>
+<td align="right">16.3</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">Faro</td>
+<td align="right">2</td>
+<td align="right">37.02</td>
+<td align="right">-7.97</td>
+<td align="right">8</td>
+<td align="right">17.0</td>
+<td align="right">0.0201246</td>
+</tr>
+<tr class="odd">
+<td align="left">Quarteira</td>
+<td align="right">3</td>
+<td align="right">37.07</td>
+<td align="right">-8.10</td>
+<td align="right">4</td>
+<td align="right">16.6</td>
+<td align="right">0.0090000</td>
+</tr>
+<tr class="even">
+<td align="left">Vila do Bispo</td>
+<td align="right">4</td>
+<td align="right">37.08</td>
+<td align="right">-8.88</td>
+<td align="right">115</td>
+<td align="right">16.1</td>
+<td align="right">0.0360000</td>
+</tr>
+<tr class="odd">
+<td align="left">Praia da Rocha</td>
+<td align="right">5</td>
+<td align="right">37.12</td>
+<td align="right">-8.53</td>
+<td align="right">19</td>
+<td align="right">16.7</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">Tavira</td>
+<td align="right">6</td>
+<td align="right">37.12</td>
+<td align="right">-7.65</td>
+<td align="right">25</td>
+<td align="right">16.9</td>
+<td align="right">0.0458912</td>
+</tr>
+<tr class="odd">
+<td align="left">S. Brás de Alportel</td>
+<td align="right">7</td>
+<td align="right">37.17</td>
+<td align="right">-7.90</td>
+<td align="right">240</td>
+<td align="right">15.9</td>
+<td align="right">0.1853213</td>
+</tr>
+<tr class="even">
+<td align="left">Vila Real Sto. António</td>
+<td align="right">8</td>
+<td align="right">37.18</td>
+<td align="right">-7.42</td>
+<td align="right">7</td>
+<td align="right">17.1</td>
+<td align="right">0.0127279</td>
+</tr>
+<tr class="odd">
+<td align="left">Monchique</td>
+<td align="right">9</td>
+<td align="right">37.32</td>
+<td align="right">-8.55</td>
+<td align="right">465</td>
+<td align="right">15.0</td>
+<td align="right">0.1980000</td>
+</tr>
+<tr class="even">
+<td align="left">Zambujeira</td>
+<td align="right">10</td>
+<td align="right">37.50</td>
+<td align="right">-8.75</td>
+<td align="right">106</td>
+<td align="right">15.0</td>
+<td align="right">0.0450000</td>
+</tr>
+</tbody>
+</table>
+<p>Based on the previous data, create a <code>SpatialPointsDataFrame</code> object to store all points and make some preliminary plots:</p>
+<pre class="r"><code>proj4Str &lt;- &quot;+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs&quot;
+
+statPoints &lt;- SpatialPointsDataFrame(coords      = climDataPT[,c(&quot;Lon&quot;,&quot;Lat&quot;)], 
+                                     data        = climDataPT,
+                                     proj4string = CRS(proj4Str))
+
+
+par(mfrow=c(1,2),mar=c(5,6,3,2))
+
+plot(rst[[&quot;Elev&quot;]], main=&quot;Elevation (meters a.s.l.) for Portugal\n and weather stations&quot;,
+     xlab = &quot;Longitude&quot;, ylab=&quot;Latitude&quot;)
+plot(statPoints, add=TRUE)
+
+hist(climDataPT$AvgTemp, xlab= &quot;Temperature (ºC)&quot;, main=&quot;Annual avg. temperature&quot;)</code></pre>
+<p><img src="img/P9_make_sp_object-1.png" width="640" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_make_sp_object-1.png" />
+
+</div>
+<p>From the figure we can see that: (i) weather stations tend to cover more the areas close to the coastline and with lower altitude, and, (ii) temperature values are ‘left-skewed’ with a median equal to 15 and a median-absolute deviation (MAD) of 15.</p>
+<p>Before proceeding, it is a good idea to inspect the correlation matrix to analyze the strength of association between the response and the predictive variables. For this, we will use the package <code>corrplot</code> with some nit graphical options 👍 👍</p>
+<pre class="r"><code>library(corrplot)
+
+corMat &lt;- cor(climDataPT[,3:ncol(climDataPT)])
+
+corrplot.mixed(corMat, number.cex=0.8, tl.cex = 0.9, tl.col = &quot;black&quot;, 
+               outline=FALSE, mar=c(0,0,2,2), upper=&quot;square&quot;, bg=NA)</code></pre>
+<p><img src="img/P9_corrplot-1.png" width="420" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_corrplot-1.png" />
+
+</div>
+<p>The correlation plot evidences that all predictive variables seem to be correlated with the average temperature, especially ‘Elevation’ and ‘Latitude’ which are well-known regional controls of temperature variation. It also shows that (as expected, given the country geometric shape) both ‘Longitude’ and ‘Distance to the coast’ are highly correlated. As such, given that ‘Longitude’ is less associated to temperature and its climatic effect is less “direct” (compared to ‘distCoast’) we will remove it.</p>
+</div>
+<div id="regression-kriging-and-model-comparison" class="section level4">
+<h4>Regression-kriging and model comparison</h4>
+<p>For comparing the different RK algorithms, we will use 10-fold cross validation and the Root-mean square error as the evaluation metric.</p>
+<div class="figure">
+<img src="https://cdn-images-1.medium.com/max/1600/1*9hQVcasuwx5ddq_s3MFCyw.gif" alt="RMSE formula" />
+<p class="caption">RMSE formula</p>
+</div>
+<p><em>Kriging parameters</em> <strong>nugget</strong>, (partial) <strong>sill</strong>, and <strong>range</strong> will be fit through Ordinary Least Squares (OLS) from a set of previously defined values that were adjusted with the help of some visual inspection and trial-and-error. The <em>Exponential</em> model was selected since it gave generally best results in preliminary analyses.</p>
+<div class="figure">
+<img src="https://www.intechopen.com/source/html/39857/media/image1.jpeg" alt="Semi-variogram parameters" />
+<p class="caption">Semi-variogram parameters</p>
+</div>
+<p>The functionalities in package <code>gstat</code> were used for all geostatistical analyses.</p>
+<hr />
+<p>Now, let’s define some ancillary functions for creating the k-fold train/test data splits and for obtaining the regression residuals out of a random forest object:</p>
+<pre class="r"><code># Generate the K-fold train--test splits
+# x are the row indices
+# Outputs a list with test (or train) indices
+kfoldSplit &lt;- function(x, k=10, train=TRUE){
+  x &lt;- sample(x, size = length(x), replace = FALSE)
+  out &lt;- suppressWarnings(split(x, factor(1:k)))
+  if(train) out &lt;- lapply(out, FUN = function(x, len) (1:len)[-x], len=length(unlist(out)))
+  return(out)
+}
+
+# Regression residuals from RF object
+resid.RF &lt;- function(x) return(x$y - x$predicted)</code></pre>
+<p>We also need to define some additional parameters and initialize the matrix that will store all RMSE values (one for each training round).</p>
+<pre class="r"><code>set.seed(12345)
+
+k &lt;- 10
+
+kfolds &lt;- kfoldSplit(1:nrow(climDataPT), k = 10, train = TRUE)
+
+evalData &lt;- matrix(NA, nrow=k, ncol=7, 
+                   dimnames = list(1:k, c(&quot;OK&quot;,&quot;RF&quot;,&quot;GLM&quot;,&quot;GAM&quot;,&quot;RF_OK&quot;,&quot;GLM_OK&quot;,&quot;GAM_OK&quot;)))</code></pre>
+<p>Now we are ready to start modelling! 😋 One code block, inside the ‘for’ loop, will be used for each regression algorithm tested. Notice how (train) residuals are interpolated through kriging and then (test) residuals are added to (test) regression results for evaluation. Use</p>
+<pre class="r"><code>library(randomForest)
+library(mgcv)
+library(gstat)
+
+
+for(i in 1:k){
+  
+  cat(&quot;K-fold...&quot;,i,&quot;of&quot;,k,&quot;....\n&quot;)
+  
+  # TRAIN indices as integer
+  idx &lt;- kfolds[[i]]
+  
+  # TRAIN indices as a boolean vector
+  idxBool &lt;- (1:nrow(climDataPT)) %in% idx
+  
+  # Observed test data for the target variable
+  obs.test &lt;- climDataPT[!idxBool, &quot;AvgTemp&quot;]
+  
+  
+  
+  ## ----------------------------------------------------------------------------- ##
+  ## Ordinary Kriging ----
+  ## ----------------------------------------------------------------------------- ##
+    
+  # Make variogram
+  formMod &lt;- AvgTemp ~ 1
+  mod &lt;- vgm(model  = &quot;Exp&quot;, psill  = 3, range  = 100, nugget = 0.5)
+  variog &lt;- variogram(formMod, statPoints[idxBool, ])
+  
+  # Variogram fitting by Ordinary Least Sqaure
+  variogFitOLS&lt;-fit.variogram(variog, model = mod,  fit.method = 6)
+  #plot(variog, variogFitOLS, main=&quot;OLS Model&quot;)
+    
+  # kriging predictions
+  OK &lt;- krige(formula = formMod ,
+              locations = statPoints[idxBool, ], 
+              model = variogFitOLS,
+              newdata = statPoints[!idxBool, ],
+              debug.level = 0)
+  
+  ok.pred.test &lt;- OK@data$var1.pred
+  evalData[i,&quot;OK&quot;] &lt;- sqrt(mean((ok.pred.test - obs.test)^2))
+  
+  
+  
+  ## ----------------------------------------------------------------------------- ##
+  ## RF calibration ----
+  ## ----------------------------------------------------------------------------- ##
+  
+  RF &lt;- randomForest(y = climDataPT[idx, &quot;AvgTemp&quot;], 
+                     x = climDataPT[idx, c(&quot;Lat&quot;,&quot;Elev&quot;,&quot;distCoast&quot;)],
+                     ntree = 500,
+                     mtry = 2)
+  
+  rf.pred.test &lt;- predict(RF, newdata = climDataPT[-idx,], type=&quot;response&quot;)
+  evalData[i,&quot;RF&quot;] &lt;- sqrt(mean((rf.pred.test - obs.test)^2))
+  
+  # Ordinary Kriging of Random Forest residuals
+  #
+  statPointsTMP &lt;- statPoints[idxBool, ]
+  statPointsTMP@data &lt;- cbind(statPointsTMP@data, residRF = resid.RF(RF))
+  
+  formMod &lt;- residRF ~ 1
+  mod &lt;- vgm(model  = &quot;Exp&quot;, psill  = 0.6, range  = 10, nugget = 0.01)
+  variog &lt;- variogram(formMod, statPointsTMP)
+  
+  # Variogram fitting by Ordinary Least Sqaure
+  variogFitOLS&lt;-fit.variogram(variog, model = mod,  fit.method = 6)
+  #plot(variog, variogFitOLS, main=&quot;OLS Model&quot;)
+    
+  # kriging predictions
+  RF.OK &lt;- krige(formula = formMod ,
+              locations = statPointsTMP, 
+              model = variogFitOLS,
+              newdata = statPoints[!idxBool, ],
+              debug.level = 0)
+  
+  rf.ok.pred.test &lt;- rf.pred.test + RF.OK@data$var1.pred
+  evalData[i,&quot;RF_OK&quot;] &lt;- sqrt(mean((rf.ok.pred.test - obs.test)^2))
+  
+  
+  
+  ## ----------------------------------------------------------------------------- ##
+  ## GLM calibration ----
+  ## ----------------------------------------------------------------------------- ##
+
+  GLM &lt;- glm(formula = AvgTemp ~ Elev + Lat + distCoast, data = climDataPT[idx, ])
+  
+  glm.pred.test &lt;- predict(GLM, newdata = climDataPT[-idx,], type=&quot;response&quot;)
+  evalData[i,&quot;GLM&quot;] &lt;- sqrt(mean((glm.pred.test - obs.test)^2))
+  
+  # Ordinary Kriging of GLM residuals
+  #
+  statPointsTMP &lt;- statPoints[idxBool, ]
+  statPointsTMP@data &lt;- cbind(statPointsTMP@data, residGLM = resid(GLM))
+  
+  formMod &lt;- residGLM ~ 1
+  mod &lt;- vgm(model  = &quot;Exp&quot;, psill  = 0.4, range  = 10, nugget = 0.01)
+  variog &lt;- variogram(formMod, statPointsTMP)
+  
+  # Variogram fitting by Ordinary Least Sqaure
+  variogFitOLS&lt;-fit.variogram(variog, model = mod,  fit.method = 6)
+  #plot(variog, variogFitOLS, main=&quot;OLS Model&quot;)
+    
+  # kriging predictions
+  GLM.OK &lt;- krige(formula = formMod ,
+              locations = statPointsTMP, 
+              model = variogFitOLS,
+              newdata = statPoints[!idxBool, ],
+              debug.level = 0)
+  
+  glm.ok.pred.test &lt;- glm.pred.test + GLM.OK@data$var1.pred
+  evalData[i,&quot;GLM_OK&quot;] &lt;- sqrt(mean((glm.ok.pred.test - obs.test)^2))
+  
+  
+  
+  ## ----------------------------------------------------------------------------- ##
+  ## GAM calibration ----
+  ## ----------------------------------------------------------------------------- ##
+  
+  GAM &lt;- gam(formula = AvgTemp ~ s(Elev) + s(Lat) + s(distCoast), data = climDataPT[idx, ])
+  
+  gam.pred.test &lt;- predict(GAM, newdata = climDataPT[-idx,], type=&quot;response&quot;)
+  evalData[i,&quot;GAM&quot;] &lt;- sqrt(mean((gam.pred.test - obs.test)^2))
+ 
+  # Ordinary Kriging of GAM residuals
+  #
+  statPointsTMP &lt;- statPoints[idxBool, ]
+  statPointsTMP@data &lt;- cbind(statPointsTMP@data, residGAM = resid(GAM))
+  
+  formMod &lt;- residGAM ~ 1
+  mod &lt;- vgm(model  = &quot;Exp&quot;, psill  = 0.3, range  = 10, nugget = 0.01)
+  variog &lt;- variogram(formMod, statPointsTMP)
+  
+  # Variogram fitting by Ordinary Least Sqaure
+  variogFitOLS&lt;-fit.variogram(variog, model = mod,  fit.method = 6)
+  #plot(variog, variogFitOLS, main=&quot;OLS Model&quot;)
+    
+  # kriging predictions
+  GAM.OK &lt;- krige(formula = formMod ,
+              locations = statPointsTMP, 
+              model = variogFitOLS,
+              newdata = statPoints[!idxBool, ],
+              debug.level = 0)
+  
+  gam.ok.pred.test &lt;- gam.pred.test + GAM.OK@data$var1.pred
+  evalData[i,&quot;GAM_OK&quot;] &lt;- sqrt(mean((gam.ok.pred.test - obs.test)^2))
+  
+}</code></pre>
+<pre><code>## K-fold... 1 of 10 ....
+## K-fold... 2 of 10 ....
+## K-fold... 3 of 10 ....
+## K-fold... 4 of 10 ....
+## K-fold... 5 of 10 ....
+## K-fold... 6 of 10 ....
+## K-fold... 7 of 10 ....
+## K-fold... 8 of 10 ....
+## K-fold... 9 of 10 ....
+## K-fold... 10 of 10 ....</code></pre>
+<p>Let’s check the average and st.-dev. results for the 10-folds CV:</p>
+<pre class="r"><code>round(apply(evalData,2,FUN = function(x,...) c(mean(x,...),sd(x,...))),3)</code></pre>
+<pre><code>##         OK    RF   GLM   GAM RF_OK GLM_OK GAM_OK
+## [1,] 1.193 0.678 0.598 0.569 0.613  0.551  0.521
+## [2,] 0.382 0.126 0.195 0.186 0.133  0.179  0.163</code></pre>
+<p>From the results above we can see that RK performed generally better than<br />
+the regression techniques alone or tahn Ordinary Kriging. The <strong>GAM-based RK method obtained the best scores</strong> with a RMSE of ca. 0.521. These are pretty good results!! 😋 👍 👍</p>
+<p>To finalize, we will predict the temperature values for the entire surface of mainland Portugal based on GAM-based Regression Kriging, which was the best performing technique on the test. For this we will not use any test/train partition but the entire dataset:</p>
+<pre class="r"><code>GAM &lt;- gam(formula = AvgTemp ~ s(Elev) + s(Lat) + s(distCoast), data = climDataPT)
+  
+rstPredGAM &lt;- predict(rst, GAM, type=&quot;response&quot;)</code></pre>
+<p>Next we need to obtain a surface with kriging-interpolated residuals. For that, we have to convert the input <code>RasterStack</code> or <code>RasterLayer</code> into a <code>SpatialPixelsDataFrame</code> so that the <code>krige</code> function can use it as a reference:</p>
+<pre class="r"><code>rstPixDF &lt;- as(rst[[1]], &quot;SpatialPixelsDataFrame&quot;)</code></pre>
+<p>Like before, we will interpolate the regression residuals with kriging and add them back to the regression results.</p>
+<pre class="r"><code># Create a temporary SpatialPointsDF object to store GAM residuals
+statPointsTMP &lt;- statPoints
+crs(statPointsTMP) &lt;- crs(rstPixDF)
+statPointsTMP@data &lt;- cbind(statPointsTMP@data, residGAM = resid(GAM))
+
+# Define the kriging parameters and fit the variogram using OLS
+formMod &lt;- residGAM ~ 1
+mod &lt;- vgm(model  = &quot;Exp&quot;, psill  = 0.15, range  = 10, nugget = 0.01)
+variog &lt;- variogram(formMod, statPointsTMP)
+variogFitOLS &lt;- fit.variogram(variog, model = mod,  fit.method = 6)
+
+# Plot the results
+plot(variog, variogFitOLS, main=&quot;Semi-variogram of GAM residuals&quot;)</code></pre>
+<p><img src="img/P9_krig_resid-1.png" width="400" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_krig_resid-1.png" />
+
+</div>
+<p>The exponential semi-variogram looks reasonable although some lack-of-convergence problems… 😟 😔</p>
+<p>Finally, let’s check the average temperature map obtained from GAM RK:</p>
+<pre class="r"><code>residKrigMap &lt;- krige(formula = formMod ,
+                      locations = statPointsTMP, 
+                      model = variogFitOLS,
+                      newdata = rstPixDF)</code></pre>
+<pre><code>## [using ordinary kriging]</code></pre>
+<pre class="r"><code>residKrigRstLayer &lt;- as(residKrigMap, &quot;RasterLayer&quot;)
+
+gamKrigMap &lt;- rstPredGAM + residKrigRstLayer
+
+plot(gamKrigMap, main=&quot;Annual average air temperature\n(GAM regression-kriging)&quot;,
+     xlab=&quot;Longitude&quot;, ylab=&quot;Latitude&quot;, cex.main=0.8, cex.axis=0.7, cex=0.8)</code></pre>
+<p><img src="img/P9_final_map-1.png" width="400" /> <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_final_map-1.png" /></p>
+<p>This concludes our exploration of the raster package and regression kriging for this post. Hope you find it useful! 😄 👍 👍</p>
+</div>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
