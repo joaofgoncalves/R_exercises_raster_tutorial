@@ -167,8 +167,8 @@ $(document).ready(function () {
 </ul>
 <p>One raster layer <em>per</em> predictive variable, with a spatial resolution of 0.009 deg (ca. 1000m) in WGS 1984 Geographic Coordinate System, is available for calculating a continuous surface of temperature values.</p>
 </div>
-<div id="modelling-development" class="section level3">
-<h3>Modelling development</h3>
+<div id="model-development" class="section level3">
+<h3>Model development</h3>
 <hr />
 <div id="data-loading-and-inspection" class="section level4">
 <h4>Data loading and inspection</h4>
@@ -191,10 +191,8 @@ fl &lt;- list.files(&quot;./data-raw/climData/rst&quot;, pattern = &quot;.tif$&q
 rst &lt;- stack(fl)
 
 # Change the layer names to coincide with table data
-names(rst) &lt;- c(&quot;distCoast&quot;, &quot;Elev&quot;, &quot;Lat&quot;, &quot;Lon&quot;)
-
-plot(rst)</code></pre>
-<p><img src="img/P9_raster_layers-1.png" width="400" /></p>
+names(rst) &lt;- c(&quot;distCoast&quot;, &quot;Elev&quot;, &quot;Lat&quot;, &quot;Lon&quot;)</code></pre>
+<pre class="r"><code>plot(rst)</code></pre>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_raster_layers-1.png" />
 
@@ -313,17 +311,14 @@ knitr::kable(head(climDataPT, n=10))</code></pre>
 
 statPoints &lt;- SpatialPointsDataFrame(coords      = climDataPT[,c(&quot;Lon&quot;,&quot;Lat&quot;)], 
                                      data        = climDataPT,
-                                     proj4string = CRS(proj4Str))
-
-
-par(mfrow=c(1,2),mar=c(5,6,3,2))
+                                     proj4string = CRS(proj4Str))</code></pre>
+<pre class="r"><code>par(mfrow=c(1,2),mar=c(5,6,3,2))
 
 plot(rst[[&quot;Elev&quot;]], main=&quot;Elevation (meters a.s.l.) for Portugal\n and weather stations&quot;,
      xlab = &quot;Longitude&quot;, ylab=&quot;Latitude&quot;)
 plot(statPoints, add=TRUE)
 
 hist(climDataPT$AvgTemp, xlab= &quot;Temperature (ºC)&quot;, main=&quot;Annual avg. temperature&quot;)</code></pre>
-<p><img src="img/P9_make_sp_object-1.png" width="640" /></p>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_make_sp_object-1.png" />
 
@@ -336,7 +331,6 @@ corMat &lt;- cor(climDataPT[,3:ncol(climDataPT)])
 
 corrplot.mixed(corMat, number.cex=0.8, tl.cex = 0.9, tl.col = &quot;black&quot;, 
                outline=FALSE, mar=c(0,0,2,2), upper=&quot;square&quot;, bg=NA)</code></pre>
-<p><img src="img/P9_corrplot-1.png" width="420" /></p>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_corrplot-1.png" />
 
@@ -566,7 +560,6 @@ variogFitOLS &lt;- fit.variogram(variog, model = mod,  fit.method = 6)
 
 # Plot the results
 plot(variog, variogFitOLS, main=&quot;Semi-variogram of GAM residuals&quot;)</code></pre>
-<p><img src="img/P9_krig_resid-1.png" width="400" /></p>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_krig_resid-1.png" />
 
@@ -576,15 +569,18 @@ plot(variog, variogFitOLS, main=&quot;Semi-variogram of GAM residuals&quot;)</co
 <pre class="r"><code>residKrigMap &lt;- krige(formula = formMod ,
                       locations = statPointsTMP, 
                       model = variogFitOLS,
-                      newdata = rstPixDF)</code></pre>
-<pre><code>## [using ordinary kriging]</code></pre>
-<pre class="r"><code>residKrigRstLayer &lt;- as(residKrigMap, &quot;RasterLayer&quot;)
+                      newdata = rstPixDF)
+
+residKrigRstLayer &lt;- as(residKrigMap, &quot;RasterLayer&quot;)
 
 gamKrigMap &lt;- rstPredGAM + residKrigRstLayer
 
 plot(gamKrigMap, main=&quot;Annual average air temperature\n(GAM regression-kriging)&quot;,
      xlab=&quot;Longitude&quot;, ylab=&quot;Latitude&quot;, cex.main=0.8, cex.axis=0.7, cex=0.8)</code></pre>
-<p><img src="img/P9_final_map-1.png" width="400" /> <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_final_map-1.png" /></p>
+<div class="figure">
+<img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P9_final_map-1.png" />
+
+</div>
 <p>This concludes our exploration of the raster package and regression kriging for this post. Hope you find it useful! 😄 👍 👍</p>
 </div>
 </div>

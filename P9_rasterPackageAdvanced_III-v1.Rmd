@@ -78,7 +78,7 @@ One raster layer _per_ predictive variable, with a spatial resolution of 0.009 d
 Geographic Coordinate System, is available for calculating a continuous surface of temperature values.
 
 
-### Modelling development 
+### Model development 
 
 -------------------------------------------------------------------------------------------------------
 
@@ -86,7 +86,7 @@ Geographic Coordinate System, is available for calculating a continuous surface 
 
 We will start by downloading and unzipping the sample data from the GitHub repository:
 
-```{r P9_download_data_from_github, message=FALSE, warning=FALSE, paged.print=FALSE}
+```{r P9_download_data_from_github, message=FALSE, warning=FALSE, paged.print=FALSE, echo=TRUE, eval=FALSE}
 
 ## Create a folder named data-raw inside the working directory to place downloaded data
 if(!dir.exists("./data-raw")) dir.create("./data-raw")
@@ -103,13 +103,8 @@ unzip("./data-raw/CLIM_DATA_PT.zip", exdir = "./data-raw")
 Now, let's load the raster layers containing the predictive variables used to build 
 the regression model of air temperature:
 
-```{r P9_load_raster_lib, echo=FALSE, message=FALSE, warning=FALSE}
 
-library(raster)
-
-```
-
-```{r P9_raster_layers}
+```{r P9_load_data, message=FALSE, warning=FALSE}
 
 library(raster)
 
@@ -121,6 +116,10 @@ rst <- stack(fl)
 
 # Change the layer names to coincide with table data
 names(rst) <- c("distCoast", "Elev", "Lat", "Lon")
+
+```
+
+```{r P9_raster_layers, echo=TRUE, eval=FALSE}
 
 plot(rst)
 
@@ -143,14 +142,16 @@ knitr::kable(head(climDataPT, n=10))
 Based on the previous data, create a `SpatialPointsDataFrame` object to store all points and make 
 some preliminary plots:
 
-```{r P9_make_sp_object, message=FALSE, warning=FALSE, paged.print=FALSE, fig.width=8}
+```{r P9_load_as_sp, message=FALSE, warning=FALSE, paged.print=FALSE, fig.width=8}
 
 proj4Str <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 
 statPoints <- SpatialPointsDataFrame(coords      = climDataPT[,c("Lon","Lat")], 
                                      data        = climDataPT,
                                      proj4string = CRS(proj4Str))
+```
 
+```{r P9_make_sp_object, eval=FALSE, echo=TRUE}
 
 par(mfrow=c(1,2),mar=c(5,6,3,2))
 
@@ -174,7 +175,7 @@ Before proceeding, it is a good idea to inspect the correlation matrix to analyz
 association between the response and the predictive variables. For this, we will use the package 
 `corrplot` with some nit graphical options `r emo::ji("thumbsup")` `r emo::ji("thumbsup")` 
 
-```{r P9_corrplot, message=FALSE, warning=FALSE, paged.print=FALSE, fig.height = 5, fig.width = 5.25}
+```{r P9_corrplot, message=FALSE, warning=FALSE, paged.print=FALSE, fig.height = 5, fig.width = 5.25, eval=FALSE, echo=TRUE}
 
 library(corrplot)
 
@@ -454,7 +455,7 @@ rstPixDF <- as(rst[[1]], "SpatialPixelsDataFrame")
 Like before, we will interpolate the regression residuals with kriging and add them 
 back to the regression results.
 
-```{r P9_krig_resid, message=FALSE, warning=FALSE, paged.print=FALSE}
+```{r P9_krig_resid, message=FALSE, warning=FALSE, paged.print=FALSE, eval=FALSE, echo=TRUE}
 
 # Create a temporary SpatialPointsDF object to store GAM residuals
 statPointsTMP <- statPoints
@@ -479,7 +480,7 @@ The exponential semi-variogram looks reasonable although some lack-of-convergenc
 
 Finally, let's check the average temperature map obtained from GAM RK:
 
-```{r P9_final_map, fig.height=8, fig.width=5}
+```{r P9_final_map, fig.height=8, fig.width=5, eval=FALSE, echo=TRUE}
 
 residKrigMap <- krige(formula = formMod ,
                       locations = statPointsTMP, 
