@@ -158,7 +158,6 @@ ncell(rst)</code></pre>
 ####################
 
 plotRGB(rst, 5, 1, 3, stretch = &quot;lin&quot;)</code></pre>
-<p><img src="img/P10_solution_ex2-1.png" width="400" /></p>
 <div class="figure">
 <img src="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/img/P10_solution_ex2-1.png" />
 
@@ -230,53 +229,18 @@ library(RStoolbox)
 
 pcaL8 &lt;- rasterPCA(rst, spca = TRUE)
 
-print(pcaL8)</code></pre>
-<pre><code>## $call
-## rasterPCA(img = rst, spca = TRUE)
-## 
-## $model
-## Call:
-## princomp(cor = spca, covmat = covMat[[1]])
-## 
-## Standard deviations:
-##     Comp.1     Comp.2     Comp.3     Comp.4     Comp.5     Comp.6 
-## 2.38453147 1.04487144 0.39409524 0.20287564 0.11697008 0.09781039 
-##     Comp.7 
-## 0.05034737 
-## 
-##  7  variables and  2286600 observations.
-## 
-## $map
-## class       : RasterBrick 
-## dimensions  : 1545, 1480, 2286600, 7  (nrow, ncol, ncell, nlayers)
-## resolution  : 30, 30  (x, y)
-## extent      : 549615, 594015, 4613355, 4659705  (xmin, xmax, ymin, ymax)
-## coord. ref. : +proj=utm +zone=29 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0 
-## data source : in memory
-## names       :       PC1,       PC2,       PC3,       PC4,       PC5,       PC6,       PC7 
-## min values  : -5.479014, -5.121455, -3.504654, -5.417790, -2.359389, -1.549161, -1.784862 
-## max values  : 32.568129,  4.537125, 14.160962,  4.581198,  2.599548,  1.610236,  1.010612 
-## 
-## 
-## attr(,&quot;class&quot;)
-## [1] &quot;rasterPCA&quot; &quot;RStoolbox&quot;</code></pre>
-<pre class="r"><code># Explained in the 3 comps = 99.04%
+print(pcaL8)
+
+# Explained in the 3 comps = 99.04%
 summary(pcaL8$model)</code></pre>
-<pre><code>## Importance of components:
-##                           Comp.1    Comp.2     Comp.3     Comp.4
-## Standard deviation     2.3845315 1.0448714 0.39409524 0.20287564
-## Proportion of Variance 0.8122843 0.1559652 0.02218729 0.00587979
-## Cumulative Proportion  0.8122843 0.9682495 0.99043682 0.99631661
-##                             Comp.5      Comp.6       Comp.7
-## Standard deviation     0.116970079 0.097810387 0.0503473733
-## Proportion of Variance 0.001954571 0.001366696 0.0003621226
-## Cumulative Proportion  0.998271181 0.999637877 1.0000000000</code></pre>
 <pre class="r"><code>####################
 #                  #
 #    Exercise 7    #
 #                  #
 ####################
 
+## (a)
+##
 ## Create a folder named data-raw inside the working directory to place downloaded data
 if(!dir.exists(&quot;./data-raw&quot;)) dir.create(&quot;./data-raw&quot;)
 
@@ -295,6 +259,8 @@ statPoints &lt;- SpatialPointsDataFrame(coords      = climDataPT[,c(&quot;Lon&qu
                                      data        = climDataPT,
                                      proj4string = CRS(proj4Str))
 
+## (b)
+##
 ## ORDINARY KRIGING --------------------------------
 
 set.seed(12345)

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="João Gonçalves" />
+
+
+<title>P10 Exercises with raster data (advanced)</title>
+
+<script src="P10_rasterPackage_exercises_III-v1_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="P10_rasterPackage_exercises_III-v1_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="P10_rasterPackage_exercises_III-v1_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="P10_rasterPackage_exercises_III-v1_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="P10_rasterPackage_exercises_III-v1_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="P10_rasterPackage_exercises_III-v1_files/navigation-1.1/tabsets.js"></script>
+<link href="P10_rasterPackage_exercises_III-v1_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="P10_rasterPackage_exercises_III-v1_files/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">P10 Exercises with raster data (advanced)</h1>
+<h4 class="author"><em>João Gonçalves</em></h4>
+<h4 class="date"><em>5 December 2017</em></h4>
+
+</div>
+
+
+<p>Geospatial data is becoming increasingly used to solve numerous ‘real-life’ problems (check out some examples <a href="http://gisgeography.com/gis-applications-uses/">here</a>. In turn, R is becoming a powerful open-source solution to handle this type of data, currently providing an exceptional range of functions and tools for GIS and Remote Sensing data analysis.</p>
+<p>In particular, <strong>raster data</strong> provides support for representing spatial phenomena by diving the surface into a grid (or matrix) composed by cells of regular size. Each raster dataset has a certain number of columns and rows and each cell contains a value with information for the variable of interest. Stored data can be either: (i) thematic - representing a <strong>discrete</strong> variable (e.g., land cover classification map) or <strong>continuous</strong> (e.g., elevation).</p>
+<p>The <code>raster</code> package currently provides an extensive set of functions to create, read, export, manipulate and process raster datasets. It also provides low-level functionalities for creating more advanced processing chains as well as the ability to manage large datasets. For more information see: <code>vignette(&quot;functions&quot;, package = &quot;raster&quot;)</code>. You can also check more about raster data on the tutorial series about this topic <a href="http://r-exercises.com/tag/geospatial">here</a>.</p>
+<p>In this exercise set we will explore the following topics in raster data processing and analysis (previously discussed in this <a href="http://r-exercises.com/tag/geospatial">tutorial series</a>):</p>
+<ul>
+<li>Unsupervised classification / clustering of satellite data,</li>
+<li>Regression-kriging (RK),</li>
+</ul>
+<p>We will also address how to use the package <code>RSToolbox</code> (<a href="https://github.com/bleutner/RStoolbox">link</a>) to calculate the:</p>
+<ul>
+<li>Tasseled Cap Transformation (TCT), and,</li>
+<li>PCA rotation/transformation.</li>
+</ul>
+<p>Both data compression techniques use spectral data from satellite imagery.</p>
+<p>Answers to the exercises are available <a href="http://r-exercises.com/2018/04/04/solutions-to-exercises-with-raster-advanced/">here</a>.</p>
+<p><strong>Exercise 1</strong></p>
+<p>Use the data in this <a href="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/LT8_PNPG_MultiBand.zip">link</a> (Landsat-8 surface reflectance data bands 1-7, for Peneda-geres National Park - PGNP, NW Portugal) to answer the next exercises (1 to 6). Download the data, uncompress and create a raster brick. How many pixels and layers does the data have?</p>
+<p><strong>Exercise 2</strong></p>
+<p>Make an RGB plot with bands: 5, 1, 3 with linear stretching.</p>
+<p><strong>Exercise 3</strong></p>
+<p>Using k-means algorithm perform an unsupervised classification/clustering of the data with 5 clusters.</p>
+<p><strong>Exercise 4</strong></p>
+<p>Use CLARA algorithm (package <code>cluster</code>) to perform also an unsupervised classification/clustering of the data with 5 clusters and Euclidean distance.</p>
+<p><strong>Exercise 5</strong></p>
+<p>Using package <code>RStoolbox</code>, calculate the Tasseled Cap Transformation of the data (remember it is Landsat-8 data with bands 1-7).</p>
+<p><strong>Exercise 6</strong></p>
+<p>Using package <code>RStoolbox</code> calculate the standardized PCA transform. What is the cumulative % of explained variance in the three first components?</p>
+<p><strong>Exercise 7</strong></p>
+<ol style="list-style-type: lower-alpha">
+<li><p>Use the data in this <a href="https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CLIM_DATA_PT.zip">link</a> to answer the next exercises (annual average temperature for weather stations in Portugal; col <code>AvgTemp</code>). Using Lat and Lon columns from the <code>clim_data_pt.csv</code> table, create a <code>SpatialPointsDataFrame</code> object with CRS WGS 1984.</p></li>
+<li><p>Using Ordinary Kriging from package <code>gstat</code>, interpolate temperature values employing a <em>Spherical</em> empirical variogram. Calculate the RMSE from 5-fold cross-validation (see function <code>krige.cv</code>) and use <code>set.seed(12345)</code>.</p></li>
+</ol>
+<p><strong>Exercise 8</strong></p>
+<p>Using the previous question rationale, experiment now with an <em>Exponential</em> model. Calculate RMSE also from 5-fold CV. Which one was the best model according to RMSE?</p>
+<p><strong>Exercise 9</strong></p>
+<p>Using the cubist regression algorithm (package <code>Cubist</code>), predict <code>AvgTemp</code> based on latitude (<code>Lat</code>), elevation (column <code>Elev</code>) and distance to coastline (column <code>distCoast</code>). Calculate the RMSE for a random test set of 15 observations. Use <code>set.seed(12345)</code>.</p>
+<p><strong>Exercise 10</strong></p>
+<p>From the previous exercise, extract the train residuals and interpolate them. Following a Regression-kriging approach, add the interpolated residuals and the regression results. Calculate the RMSE for the test set (defined in E9) and check if this improves the modelling performance any further.</p>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

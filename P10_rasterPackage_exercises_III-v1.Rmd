@@ -31,10 +31,10 @@ The `raster` package currently provides an extensive set of functions to create,
 manipulate and process raster datasets. It also provides low-level functionalities for creating 
 more advanced processing chains as well as the ability to manage large datasets. For more 
 information see: `vignette("functions", package = "raster")`. You can also check more about raster 
-data on the tutorial series about this topic [here](http://r-exercises.com/tags/geospatial).
+data on the tutorial series about this topic [here](http://r-exercises.com/tag/geospatial).
 
 In this exercise set we will explore the following topics in raster data processing and analysis 
-(previously discussed in this [tutorial series](http://r-exercises.com/tags/geospatial)):      
+(previously discussed in this [tutorial series](http://r-exercises.com/tag/geospatial)):      
 
    - Unsupervised classification / clustering of satellite data,
    - Regression-kriging (RK),
@@ -50,44 +50,55 @@ Both data compression techniques use spectral data from satellite imagery.
 Answers to the exercises are available [here](http://r-exercises.com/2018/04/04/solutions-to-exercises-with-raster-advanced/).
 
 
-__Exercise 1__
+__Exercise 1__       
+
 Use the data in this [link](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/LT8_PNPG_MultiBand.zip) (Landsat-8 surface reflectance data bands 1-7, for Peneda-geres National Park - PGNP, NW Portugal) to answer the next exercises (1 to 6). 
 Download the data, uncompress and create a raster brick. How many pixels and layers does the data have?
 
-__Exercise 2__
-Make an RGB plot with bands 5,1,3 with linear stretch.
+__Exercise 2__      
 
-__Exercise 3__
+Make an RGB plot with bands: 5, 1, 3 with linear stretching.
+
+__Exercise 3__      
+
 Using k-means algorithm perform an unsupervised classification/clustering of the data with 5 clusters.
 
-__Exercise 4__
+__Exercise 4__       
+
 Use CLARA algorithm (package `cluster`) to perform also an unsupervised classification/clustering of the data with 5 clusters and 
 Euclidean distance.
 
-__Exercise 5__
+__Exercise 5__       
+
 Using package `RStoolbox`, calculate the Tasseled Cap Transformation of the data (remember it is Landsat-8 data with bands 1-7).
 
-__Exercise 6__
+__Exercise 6__       
+
 Using package `RStoolbox` calculate the standardized PCA transform. What is the cumulative % of explained variance 
 in the three first components?
 
-__Exercise 7__
-Use the data in this [link](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CLIM_DATA_PT.zip) to 
+__Exercise 7__            
+
+(a) Use the data in this [link](https://raw.githubusercontent.com/joaofgoncalves/R_exercises_raster_tutorial/master/data/CLIM_DATA_PT.zip) to 
 answer the next exercises (annual average temperature for weather stations in Portugal; col `AvgTemp`). 
-Using Lat and Lon columns from the `clim_data_pt.csv` table create a `SpatialPointsDataFrame` object with CRS WGS1984. 
-Using Ordinary Kriging from package `gstat`, interpolate temperature values employing a _Spherical_ empirical variogram. 
+Using Lat and Lon columns from the `clim_data_pt.csv` table, create a `SpatialPointsDataFrame` object with CRS WGS 1984. 
+
+(b) Using Ordinary Kriging from package `gstat`, interpolate temperature values employing a _Spherical_ empirical variogram. 
 Calculate the RMSE from 5-fold cross-validation (see function `krige.cv`) and use `set.seed(12345)`.
 
-__Exercise 8__
+__Exercise 8__        
+
 Using the previous question rationale, experiment now with an _Exponential_ model. Calculate RMSE also from 5-fold CV. 
 Which one was the best model according to RMSE?
 
-__Exercise 9__
-Using the cubist regression algorithm (in package `Cubist`) predict `AvgTemp` based on latitude (`Lat`), elevation 
+__Exercise 9__        
+
+Using the cubist regression algorithm (package `Cubist`), predict `AvgTemp` based on latitude (`Lat`), elevation 
 (column `Elev`) and distance to coastline (column `distCoast`). Calculate the RMSE for a random test set of 15 observations. 
 Use `set.seed(12345)`.
 
-__Exercise 10__
+__Exercise 10__        
+
 From the previous exercise, extract the train residuals and interpolate them. Following a Regression-kriging approach, 
 add the interpolated residuals and the regression results. Calculate the RMSE for the test set (defined in E9) and check 
 if this improves the modelling performance any further.
